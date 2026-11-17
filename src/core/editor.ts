@@ -24,6 +24,7 @@ const BASE_SCHEMA: HaFormSchema[] = [
           { value: "auto", label: "Auto (Home Assistant)" },
           { value: "cs", label: "Čeština" },
           { value: "en", label: "English" },
+          { value: "de", label: "Deutsch" },
         ],
       },
     },
@@ -34,6 +35,11 @@ const BASE_SCHEMA: HaFormSchema[] = [
 const BASE_LABELS: Dict = {
   cs: { device: "Zařízení (účet Rohlík.cz)", name: "Vlastní název", language: "Jazyk karty" },
   en: { device: "Device (Rohlík.cz account)", name: "Custom name", language: "Card language" },
+  de: {
+    device: "Gerät (Rohlík-Konto)",
+    name: "Eigener Name",
+    language: "Sprache der Karte",
+  },
 };
 
 /**

@@ -7,7 +7,7 @@ import type { HomeAssistant, LovelaceGridOptions } from "../../core/types";
 import { registerCard } from "../../core/register";
 import { sharedStyles } from "../../core/styles";
 import { getConfigEntryId, callRohlik } from "../../core/actions";
-import { formatMoney, formatRelativeDay, formatTime } from "../../core/format";
+import { formatRelativeDay, formatTime } from "../../core/format";
 import {
   DEFAULT_SLOTS,
   SLOT_ICONS,
@@ -275,7 +275,7 @@ export class RohlikSlotsCard extends RohlikBaseCard<SlotsCardConfig> {
     const startLabel = formatTime(this.hass, slot.start);
     parts.push(slot.end ? `${startLabel} – ${formatTime(this.hass, slot.end)}` : startLabel);
     if (this.config.show_price !== false && slot.price != null) {
-      parts.push(slot.price === 0 ? this.t("free") : formatMoney(this.hass, slot.price));
+      parts.push(slot.price === 0 ? this.t("free") : this.money(slot.price));
     }
     return parts.join(" · ");
   }

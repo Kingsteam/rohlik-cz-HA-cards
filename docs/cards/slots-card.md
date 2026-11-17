@@ -11,7 +11,7 @@ freed-up express slot while the dashboard tab is open.
 | `device`         | string                                  | —                                  | **Required.** Rohlík.cz device id (pick it in the visual editor). |
 | `name`           | string                                  | —                                  | Overrides the card title ("Delivery slots" / "Termíny rozvozu"). |
 | `accent`         | string                                  | —                                  | Overrides the accent colour (defaults to the theme's primary colour). |
-| `language`       | `auto` \| `cs` \| `en`                  | `auto`                              | Card language. `auto` follows the Home Assistant UI language; otherwise every string, date and money value is forced to the chosen one regardless of the dashboard's own language. |
+| `language`       | `auto` \| `cs` \| `en` \| `de`                  | `auto`                              | Card language. `auto` follows the Home Assistant UI language; otherwise every string, date and money value is forced to the chosen one regardless of the dashboard's own language. |
 | `slots`          | array of `express` \| `standard` \| `eco` | `[express, standard, eco]`        | Which slot tiles to show, and in what order. |
 | `show_price`     | boolean                                 | `true`                             | Show the price/"free" part of the meta line on each tile. |
 | `show_location`  | boolean                                 | `true`                             | Show the delivery address line (`first_delivery`'s `delivery_location`) under the header. |

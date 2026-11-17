@@ -89,7 +89,7 @@ export class RohlikAccountCard extends RohlikBaseCard<AccountCardConfig> {
         if (!this.entityId("credit_amount")) return null;
         const amount = numberOrNull(this.state("credit_amount")?.state);
         if (amount == null) return null;
-        return { icon: "mdi:cash-multiple", labelKey: "stat_credit", value: formatMoney(this.hass, amount) };
+        return { icon: "mdi:cash-multiple", labelKey: "stat_credit", value: this.money(amount) };
       }
       case "bags": {
         if (!this.entityId("bags_amount")) return null;
@@ -101,7 +101,7 @@ export class RohlikAccountCard extends RohlikBaseCard<AccountCardConfig> {
         const value = typeof max === "number" ? `${current} / ${max}` : String(current);
         let caption: string | undefined;
         if (typeof depositAmount === "number" && depositAmount > 0) {
-          const currency = typeof depositCurrency === "string" ? depositCurrency : "CZK";
+          const currency = typeof depositCurrency === "string" ? depositCurrency : this.shop().currency;
           caption = this.t("deposit_caption", {
             amount: formatMoney(this.hass, depositAmount, currency),
           });
@@ -246,7 +246,7 @@ export class RohlikAccountCard extends RohlikBaseCard<AccountCardConfig> {
     }).format(date);
     const parts = [`${this.t("last_order")} ${dateLabel}`];
     if (typeof items === "number") parts.push(this.t("items_count", { count: items }));
-    if (typeof price === "number") parts.push(formatMoney(this.hass, price));
+    if (typeof price === "number") parts.push(this.money(price));
     return html`<div class="last-order">${parts.join(" · ")}</div>`;
   }
 }

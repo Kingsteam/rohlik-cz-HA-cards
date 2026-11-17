@@ -39,6 +39,25 @@ export const strings: Dict = {
     breakdown_year_hint: "Breakdown shown for {year} (per-month categories are not available)",
     monthly_history_hint: "Monthly history needs the recorder",
   },
+  de: {
+    title: "Ausgaben",
+    not_found: "Auf diesem Gerät wurden keine Rohlík-Entitäten gefunden",
+    period_month: "Diesen Monat",
+    period_year: "Dieses Jahr",
+    period_all: "Gesamt",
+    avg_order: "Ø Bestellung",
+    orders_count: "{n} {n:Bestellung|Bestellungen}",
+    level_l0: "Hauptgruppen",
+    level_l1: "Kategorien",
+    level_l2: "Detailliert",
+    level_l3: "Am genauesten",
+    level_items: "Artikel",
+    expand_row: "{units} Stück · {avg} pro Stück",
+    enable_hint: "Für die Aufschlüsselung die Ausgabenanalyse in den Optionen der Integration einschalten.",
+    enriched: "{enriched} von {total} Bestellungen ausgewertet",
+    breakdown_year_hint: "Aufschlüsselung für {year} (keine Kategorien pro Monat verfügbar)",
+    monthly_history_hint: "Der Monatsverlauf braucht den Recorder",
+  },
 };
 
 export const labels: Dict = {
@@ -59,5 +78,14 @@ export const labels: Dict = {
     top_n: "Row count",
     chart: "Chart",
     show_totals: "Show totals",
+  },
+  de: {
+    device: "Gerät",
+    name: "Eigener Name",
+    default_period: "Standardzeitraum",
+    default_level: "Standardebene",
+    top_n: "Anzahl Zeilen",
+    chart: "Diagramm",
+    show_totals: "Summen anzeigen",
   },
 };

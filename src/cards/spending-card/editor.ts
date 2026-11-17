@@ -19,16 +19,34 @@ export interface SpendingCardConfig extends RohlikCardConfig {
 const PERIOD_OPTION_LABELS: Dict = {
   cs: { month: "Tento měsíc", year: "Letos", all: "Celkem" },
   en: { month: "This month", year: "This year", all: "All time" },
+  de: {
+    month: "Diesen Monat",
+    year: "Dieses Jahr",
+    all: "Gesamt",
+  },
 };
 
 const LEVEL_OPTION_LABELS: Dict = {
   cs: { l0: "Hlavní", l1: "Kategorie", l2: "Podrobné", l3: "Nejpodrobnější", items: "Položky" },
   en: { l0: "Top", l1: "Categories", l2: "Detailed", l3: "Specific", items: "Items" },
+  de: {
+    l0: "Hauptgruppen",
+    l1: "Kategorien",
+    l2: "Detailliert",
+    l3: "Am genauesten",
+    items: "Artikel",
+  },
 };
 
 const CHART_OPTION_LABELS: Dict = {
   cs: { auto: "Automaticky", years: "Roky", months: "Měsíce", none: "Žádný" },
   en: { auto: "Automatic", years: "Years", months: "Months", none: "None" },
+  de: {
+    auto: "Automatisch",
+    years: "Jahre",
+    months: "Monate",
+    none: "Keins",
+  },
 };
 
 @customElement("rohlik-spending-card-editor")

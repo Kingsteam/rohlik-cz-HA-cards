@@ -15,7 +15,8 @@ import type {
   LovelaceGridOptions,
 } from "./types";
 import { findRohlikDevices, resolveEntities } from "./discovery";
-import { formatAgo, parseTs } from "./format";
+import { formatAgo, formatMoney, parseTs } from "./format";
+import { shopForDevice, type Shop } from "./shop";
 import { localize, coreStrings, withLanguage, type CardLanguage, type Dict } from "./localize";
 import { sharedStyles } from "./styles";
 
@@ -134,6 +135,16 @@ export abstract class RohlikBaseCard<C extends RohlikCardConfig = RohlikCardConf
     if (this.config?.name) return this.config.name;
     const device = this.hass?.devices?.[this.config?.device];
     return device?.name_by_user || device?.name || "Rohlík.cz";
+  }
+
+  /** The shop (Rohlík.cz, Gurkerl.at, …) of the configured device. */
+  protected shop(): Shop {
+    return shopForDevice(this.hass, this.config?.device);
+  }
+
+  /** Formats an amount in the shop's currency. */
+  protected money(amount: number): string {
+    return formatMoney(this.hass, amount, this.shop().currency);
   }
 
   /** Sets `--rohlik-accent` from `config.accent`, when given. */

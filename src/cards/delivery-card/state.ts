@@ -225,3 +225,43 @@ export function findReservedUntil(attributes: Record<string, unknown> | null | u
   }
   return null;
 }
+
+/** One line of the upcoming order, ready for rendering. */
+export interface OrderItemView {
+  name: string;
+  quantity: number;
+  amount?: string;
+  image?: string;
+}
+
+/**
+ * Parses the `items` attribute HA-RohlikCZ puts on the `is_ordered` binary
+ * sensor (one entry per order line: `name`, `quantity`, `textual_amount`,
+ * `image`, …). Anything that isn't a list, entries without a name and
+ * non-http(s) picture URLs are dropped; a missing or invalid quantity
+ * counts as 1. Older integration versions have no `items`: the result is
+ * then an empty list.
+ */
+export function parseOrderItems(raw: unknown): OrderItemView[] {
+  if (!Array.isArray(raw)) return [];
+  const items: OrderItemView[] = [];
+  for (const entry of raw) {
+    if (!entry || typeof entry !== "object") continue;
+    const record = entry as Record<string, unknown>;
+    const name = typeof record.name === "string" ? record.name.trim() : "";
+    if (!name) continue;
+    const quantity = Number(record.quantity);
+    const item: OrderItemView = {
+      name,
+      quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : 1,
+    };
+    if (typeof record.textual_amount === "string" && record.textual_amount.trim()) {
+      item.amount = record.textual_amount.trim();
+    }
+    if (typeof record.image === "string" && /^https?:\/\//i.test(record.image)) {
+      item.image = record.image;
+    }
+    items.push(item);
+  }
+  return items;
+}

@@ -11,7 +11,7 @@ last-order line and a manual data refresh.
 | `device`      | string  | —                                                                          | **Required.** Rohlík.cz device id (pick it in the visual editor). |
 | `name`        | string  | —                                                                          | Overrides the card title (defaults to the device name). |
 | `accent`      | string  | —                                                                          | Overrides the accent colour (defaults to the theme's primary colour). |
-| `language`    | `auto` \| `cs` \| `en` | `auto`                                                     | Card language. `auto` follows the Home Assistant UI language; otherwise every string, date and money value is forced to the chosen one regardless of the dashboard's own language. |
+| `language`    | `auto` \| `cs` \| `en` \| `de` | `auto`                                                     | Card language. `auto` follows the Home Assistant UI language; otherwise every string, date and money value is forced to the chosen one regardless of the dashboard's own language. |
 | `stats`       | array   | `[credit, bags, no_limit, free_express, parents_club, reusable]`         | Which stat tiles to show, and in what order. |
 | `show_footer` | boolean | `true`                                                                     | Show the last-order line and the refresh button. |
 

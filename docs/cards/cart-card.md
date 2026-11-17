@@ -10,16 +10,17 @@ the cart.
 |-----------------------|---------|---------|-------------|
 | `device`              | string  | —       | **Required.** Rohlík.cz device id (pick it in the visual editor). |
 | `name`                | string  | —       | Overrides the card title ("Shopping cart" / "Nákupní košík"). |
-| `language`            | string  | `auto`  | `auto` \| `cs` \| `en`. `auto` follows the Home Assistant UI language; otherwise pins the card's strings, dates and money formatting to that language regardless of the HA locale. |
+| `language`            | string  | `auto`  | `auto` \| `cs` \| `en` \| `de`. `auto` follows the Home Assistant UI language; otherwise pins the card's strings, dates and money formatting to that language regardless of the HA locale. |
 | `accent`              | string  | —       | Overrides the accent colour (defaults to the theme's primary colour). |
 | `show_search`         | boolean | `true`  | Show the product search box. |
 | `group_by_category`   | boolean | `false` | Group cart lines under small uppercase category headers. |
 | `show_brand`          | boolean | `true`  | Show the brand in each line's secondary text. |
 | `max_items`           | number  | `0`     | Lines to show before collapsing the rest behind "Show all N"; `0` shows every line and lets the list scroll instead. |
 | `list_max_height`     | number  | `360`   | Maximum height of the item list in px on pointer-fine (desktop) devices; beyond that the list scrolls inside the card. Ignored on touch devices, where the list grows so swiping still scrolls the dashboard. `0` = unlimited everywhere. |
-| `min_order`           | number  | `0`     | Minimum order value in Kč. When set, the card shows an "Above/Below minimum" chip and how much is missing; remaining Xtra no-limit orders count as above the minimum. `0` disables the check. |
+| `min_order`           | number  | `0`     | Minimum order value in the shop's currency (Kč, €, …). When set, the card shows an "Above/Below minimum" chip and how much is missing; remaining Xtra no-limit orders count as above the minimum. `0` disables the check. |
 | `show_order_button`   | boolean | `true`  | Show the "Order" button in the footer that opens the Rohlík.cz cart. The button is enabled whenever the cart is not empty; Rohlík.cz enforces the real ordering rules at checkout. |
-| `checkout_url`        | string  | `https://www.rohlik.cz/kosik` | URL the "Order" button opens in a new tab. |
+| `checkout_url`        | string  | shop of the account | URL the "Order" button opens in a new tab. Empty: the account's shop, read from the device (Rohlík.cz cart `https://www.rohlik.cz/kosik`; Knuspr.de, Gurkerl.at, Kifli.hu and Sezamo.ro open their home page). |
+| `show_images`         | boolean | `false` | Show product pictures in cart lines and search results. Needs an HA-RohlikCZ version that sends `image` with search results and an `Image:` line in the cart items; without it an empty placeholder is shown. |
 
 ## YAML example
 
@@ -34,6 +35,7 @@ list_max_height: 360
 min_order: 0
 show_order_button: true
 checkout_url: https://www.rohlik.cz/kosik
+show_images: true
 ```
 
 ## Behaviour
@@ -92,7 +94,7 @@ checkout_url: https://www.rohlik.cz/kosik
     (see quick-add parsing below; defaults to 1).
   - **Escape** clears the box and closes the popover.
 - **Order button** (`show_order_button`): a primary button in the footer,
-  next to Refresh, that opens `checkout_url` (default the Rohlík.cz cart) in
+  next to Refresh, that opens `checkout_url` (default: the account's shop) in
   a new tab. It's enabled whenever the cart isn't empty (Rohlík.cz enforces
   the real ordering rules at checkout); with an empty cart it renders
   disabled (`aria-disabled`, muted, no `href`). When `min_order` is set and

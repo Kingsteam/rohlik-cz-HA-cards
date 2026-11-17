@@ -37,6 +37,24 @@ export const strings: Dict = {
     refresh_failed: "Refresh failed",
     no_entities: "Rohlík.cz entities not found on this device",
   },
+  de: {
+    title: "Konto",
+    xtra_days: "Xtra · {days} {days:Tag|Tage}",
+    no_xtra: "Ohne Xtra",
+    stat_credit: "Guthaben",
+    stat_bags: "Taschen",
+    stat_no_limit: "Bestellungen ohne Mindestwert",
+    stat_free_express: "Express kostenlos",
+    stat_parents_club: "Elternclub",
+    stat_reusable: "Mehrwegtaschen",
+    deposit_caption: "Pfand {amount}",
+    remaining: "noch {n}",
+    yes: "Ja",
+    no: "Nein",
+    last_order: "Letzte Bestellung",
+    refresh_failed: "Aktualisieren fehlgeschlagen",
+    no_entities: "Auf diesem Gerät wurden keine Rohlík-Entitäten gefunden",
+  },
 };
 
 export const labels: Dict = {
@@ -51,5 +69,11 @@ export const labels: Dict = {
     name: "Custom name",
     stats: "Stats shown",
     show_footer: "Show footer",
+  },
+  de: {
+    device: "Gerät",
+    name: "Eigener Name",
+    stats: "Angezeigte Werte",
+    show_footer: "Fußzeile anzeigen",
   },
 };

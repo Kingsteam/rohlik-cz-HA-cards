@@ -209,6 +209,50 @@ async function main() {
       await context.close();
     }
 
+    // ---- Gurkerl.at account in German, with product pictures ----
+    {
+      const { context, page, errors } = await openPreview(
+        browser,
+        "?lang=de&shop=at&theme=light&state=ordered&images=1",
+      );
+      allErrors.push(...errors.map((e) => `[at/de/images] ${e}`));
+      await shootElement(page, "rohlik-delivery-card", "delivery-card-items-de.png");
+      await shootElement(page, "rohlik-cart-card", "cart-card-images-de.png");
+
+      // Open the search popover (position: fixed, so it can overflow the
+      // card) and capture the card plus the area below it.
+      await page.locator("rohlik-cart-card input").fill("milch");
+      await page.waitForFunction(
+        () => {
+          const card = document.querySelector("rohlik-cart-card");
+          return !!card?.shadowRoot?.querySelector(".search-popover .search-result img");
+        },
+        { timeout: 5_000 },
+      );
+      await page.evaluate(
+        () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+      );
+      const box = await (await page.$("#rohlik-cart-card")).boundingBox();
+      await page.screenshot({
+        path: path.join(IMAGES_DIR, "cart-card-search-images-de.png"),
+        clip: { x: box.x, y: box.y, width: box.width, height: Math.min(box.height, 420) },
+      });
+      console.log("  wrote cart-card-search-images-de.png");
+      report.push({ state: "at/de/images", errors });
+      await context.close();
+    }
+
+    // ---- Gurkerl.at, dark theme, arriving (errors only) ----
+    {
+      const { context, errors } = await openPreview(
+        browser,
+        "?lang=de&shop=at&theme=dark&state=arriving&images=1",
+      );
+      allErrors.push(...errors.map((e) => `[at/de/dark] ${e}`));
+      report.push({ state: "at/de/dark", errors });
+      await context.close();
+    }
+
     // ---- English smoke pass (not screenshotted, just checked for errors) ----
     {
       const { context, errors } = await openPreview(browser, "?lang=en&theme=light&state=arriving");

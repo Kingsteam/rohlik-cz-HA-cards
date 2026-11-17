@@ -45,7 +45,7 @@ Releases marked *pre-release* (like `v0.1.0-alpha`) only show up in HACS when
 
 Every card takes a single `device` option: pick your Rohlík.cz account in the visual
 editor and the card finds its entities itself, no entity IDs needed. All cards speak
-Czech and English (`language: auto` follows your Home Assistant profile), use only your
+Czech, English and German (`language: auto` follows your Home Assistant profile), use only your
 theme's colours, adapt to their own width on phones, and show an "updated N min ago"
 footer that turns amber when the integration stops refreshing.
 
@@ -64,13 +64,18 @@ three upcoming slots with prices.
 
 <img src="docs/images/delivery-card-ordered.png?v=0.1.0-alpha" alt="Next Delivery card, ordered state" width="360"> <img src="docs/images/delivery-card-none.png?v=0.1.0-alpha" alt="Next Delivery card, no order state" width="360">
 
+While an order is on its way, `show_items` lists its items with pictures (from the
+`items` attribute of newer HA-RohlikCZ versions):
+
+<img src="docs/images/delivery-card-items-de.png" alt="Next Delivery card listing the order's items with pictures, German" width="360">
+
 A matching **badge**, `rohlik-delivery-badge`, shows the same state in one line at the
 top of a view:
 
 <img src="docs/images/delivery-badge.png?v=0.1.0-alpha" alt="Delivery badge" width="240">
 
 Options: `show_announcement`, `show_order_summary`, `show_express_chip`, `show_refresh`,
-`show_slots`, `show_shop_link`, `compact`, `tap_action`. Full reference in
+`show_slots`, `show_shop_link`, `show_items`, `compact`, `tap_action`. Full reference in
 [docs/cards/delivery-card.md](docs/cards/delivery-card.md).
 
 ### Shopping Cart — `rohlik-cart-card`
@@ -80,12 +85,20 @@ Options: `show_announcement`, `show_order_summary`, `show_express_chip`, `show_r
 Your live cart as product rows with a quantity stepper and remove button, the total and
 item count, and an inline search box: results float over the page, `+` or Enter adds a
 product (type `3 rohlíky` to add three), a heart limits results to favourites. The
-**Order** button opens your Rohlík.cz cart in a new tab. Set `min_order` to get an
+**Order** button opens your shop's cart in a new tab (Rohlík.cz cart, or the home page of
+Knuspr.de, Gurkerl.at, Kifli.hu and Sezamo.ro; override with `checkout_url`). Prices use
+the shop's currency. Set `min_order` to get an
 "Above/Below minimum" chip and how much is missing; Xtra no-limit orders count as above.
 Long carts scroll inside the card (`list_max_height`).
 
+With `show_images: true` each line and search result gets a product picture (needs an
+HA-RohlikCZ version that sends pictures). Below: a Gurkerl.at account with `language: de`
+(preview data, made-up products).
+
+<img src="docs/images/cart-card-images-de.png" alt="Shopping Cart card with product pictures, German" width="360"> <img src="docs/images/cart-card-search-images-de.png" alt="Search results with product pictures, German" width="360">
+
 Options: `show_search`, `group_by_category`, `show_brand`, `max_items`, `list_max_height`,
-`min_order`, `show_order_button`, `checkout_url`. Reference:
+`min_order`, `show_order_button`, `checkout_url`, `show_images`. Reference:
 [docs/cards/cart-card.md](docs/cards/cart-card.md).
 
 ### Delivery Slots — `rohlik-slots-card`

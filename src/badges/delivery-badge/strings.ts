@@ -15,4 +15,9 @@ export const badgeLabels: Dict = {
     name: "Custom name",
     show_name: "Show device name",
   },
+  de: {
+    device: "Gerät",
+    name: "Eigener Name",
+    show_name: "Gerätenamen anzeigen",
+  },
 };
