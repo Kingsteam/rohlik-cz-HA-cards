@@ -11,14 +11,15 @@ companion badge, `rohlik-delivery-badge`.
 |------------------------|---------|---------|-------------|
 | `device`               | string  | —       | **Required.** Rohlík.cz device id (pick it in the visual editor). |
 | `name`                 | string  | —       | Overrides the card title ("Next delivery" / "Příští rozvoz"). |
-| `language`             | string  | `auto`  | Card language: `auto` follows the Home Assistant UI language, or force `cs`/`en`. Added automatically to every card's editor — see `docs/DESIGN.md`. |
+| `language`             | string  | `auto`  | Card language: `auto` follows the Home Assistant UI language, or force `cs`/`en`/`de`. Added automatically to every card's editor — see `docs/DESIGN.md`. |
 | `accent`               | string  | —       | Overrides the accent colour (defaults to the theme's primary colour). |
 | `show_announcement`    | boolean | `true`  | Show the courier's announcement (`delivery_info`) while ordered/arriving. |
 | `show_order_summary`   | boolean | `true`  | Show the "N items · price" row. |
 | `show_express_chip`    | boolean | `true`  | Show the "Express available" chip when `is_express_available` is on. |
 | `show_refresh`         | boolean | `true`  | Show the manual refresh button. |
 | `show_slots`           | boolean | `true`  | In the "no order" state, show up to three compact upcoming-slot rows (Express/Standard/Eco). |
-| `show_shop_link`       | boolean | `true`  | In the "delivered" state, show an "Order again on rohlik.cz" link. |
+| `show_shop_link`       | boolean | `true`  | In the "delivered" state, show an "Order again on …" link to the account's shop. |
+| `show_items`           | boolean | `true`  | While an order is on its way, list its items with pictures (first 5, then "Show all"). Reads the `items` attribute of the "Next order" binary sensor; older HA-RohlikCZ versions have none, and the list is simply not shown. |
 | `compact`              | boolean | `false` | Single-row layout: icon, headline, chip — no track, no rows. |
 | `tap_action`           | string  | —       | Set to `none` to disable tapping the card to open the `is_ordered` more-info dialog. |
 
@@ -33,6 +34,7 @@ show_express_chip: true
 show_refresh: true
 show_slots: true
 show_shop_link: true
+show_items: true
 compact: false
 ```
 
@@ -96,7 +98,7 @@ progress marker and the "delivered" 6-hour window stay accurate between
 ## Badge — rohlik-delivery-badge
 
 A compact pill for the same state machine, meant for the badge row above a
-view. Options: `device` (required), `name`, `language` (`auto`/`cs`/`en`,
+view. Options: `device` (required), `name`, `language` (`auto`/`cs`/`en`/`de`,
 same meaning as the card's), `accent`, `show_name` (adds the device name in
 front of the state word in the small label, default `false`).
 

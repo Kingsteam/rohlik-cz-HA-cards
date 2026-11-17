@@ -100,6 +100,22 @@ export const sharedStyles = css`
     border-bottom: none;
   }
 
+  /* Product picture (cart lines, search results, delivery items). Product
+     shots are cut out on white, so a white tile keeps them readable in the
+     dark theme too. */
+  .thumb {
+    flex: none;
+    width: var(--rohlik-thumb-size, 40px);
+    height: var(--rohlik-thumb-size, 40px);
+    border-radius: 6px;
+    object-fit: contain;
+    background: #fff;
+  }
+
+  .thumb.placeholder {
+    background: var(--secondary-background-color, rgba(127, 127, 127, 0.12));
+  }
+
   .btn {
     display: inline-flex;
     align-items: center;

@@ -76,10 +76,23 @@ export const coreStrings: Dict = {
     items_count: "{count} {count:item|items}",
     free: "free",
   },
+  de: {
+    today: "Heute",
+    tomorrow: "Morgen",
+    updated_ago: "Aktualisiert {time}",
+    refresh: "Aktualisieren",
+    unavailable: "Nicht verfügbar",
+    error_generic: "Etwas ist schiefgelaufen",
+    show_all: "Alle anzeigen ({count})",
+    show_less: "Weniger anzeigen",
+    items: "Artikel",
+    items_count: "{count} {count:Artikel|Artikel}",
+    free: "kostenlos",
+  },
 };
 
 /** Supported card languages; `auto` (or unset) follows Home Assistant. */
-export const CARD_LANGUAGES = ["cs", "en"] as const;
+export const CARD_LANGUAGES = ["cs", "en", "de"] as const;
 export type CardLanguage = (typeof CARD_LANGUAGES)[number];
 
 /**

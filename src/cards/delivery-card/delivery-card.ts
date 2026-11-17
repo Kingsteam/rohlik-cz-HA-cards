@@ -7,10 +7,12 @@ import type { HomeAssistant, LovelaceGridOptions } from "../../core/types";
 import { registerCard } from "../../core/register";
 import { sharedStyles } from "../../core/styles";
 import { getConfigEntryId, callRohlik, openMoreInfo } from "../../core/actions";
-import { formatTime, formatMoney, formatRelativeDay, formatCountdown, parseTs } from "../../core/format";
+import { formatTime, formatRelativeDay, formatCountdown, parseTs } from "../../core/format";
 import {
   computeDeliveryState,
   findReservedUntil,
+  parseOrderItems,
+  type OrderItemView,
   type DeliveryOrderData,
   type DeliverySlotKey,
   type DeliverySlotView,
@@ -32,6 +34,8 @@ export interface DeliveryCardConfig extends RohlikCardConfig {
   show_slots?: boolean;
   /** Show the "Order again on rohlik.cz" link in the "delivered" state. */
   show_shop_link?: boolean;
+  /** List the items (with pictures) of the upcoming order; needs HA-RohlikCZ with the `items` attribute. */
+  show_items?: boolean;
   compact?: boolean;
   tap_action?: string | { action?: string };
 }
@@ -42,6 +46,9 @@ const CHIP_KIND: Record<DeliveryView["state"], "ok" | "neutral"> = {
   delivered: "ok",
   none: "neutral",
 };
+
+/** Item rows shown before the "Show all" toggle. */
+const ITEMS_COLLAPSED = 5;
 
 const SLOT_KEYS: readonly DeliverySlotKey[] = ["express", "standard", "eco"];
 
@@ -66,6 +73,8 @@ export class RohlikDeliveryCard extends RohlikBaseCard<DeliveryCardConfig> {
   @litState() private refreshing = false;
 
   @litState() private refreshError: string | null = null;
+
+  @litState() private itemsExpanded = false;
 
   private tickTimer: ReturnType<typeof setInterval> | undefined;
 
@@ -274,6 +283,11 @@ export class RohlikDeliveryCard extends RohlikBaseCard<DeliveryCardConfig> {
       (view.state === "arriving" || view.state === "ordered") && !!view.since && !!view.till;
     const showSlots = this.config.show_slots !== false && view.state === "none" && view.slots.length > 0;
     const showShopLink = this.config.show_shop_link !== false && view.state === "delivered";
+    const items =
+      this.config.show_items !== false && (view.state === "arriving" || view.state === "ordered")
+        ? parseOrderItems(this.attr("is_ordered", "items"))
+        : [];
+    const shop = this.shop();
     const reservedUntil =
       view.state === "none" && view.isReserved
         ? findReservedUntil(this.state("is_reserved")?.attributes)
@@ -306,14 +320,15 @@ export class RohlikDeliveryCard extends RohlikBaseCard<DeliveryCardConfig> {
       ${showSlots ? this.renderSlots(view) : nothing}
       ${showAnnouncement ? html`<div class="row">${this.renderAnnouncement(view)}</div>` : nothing}
       ${showSummary ? html`<div class="row">${this.renderSummary(view)}</div>` : nothing}
+      ${items.length ? this.renderItems(items) : nothing}
       ${this.refreshError ? html`<div class="error">${this.refreshError}</div>` : nothing}
       ${showRefresh || showShopLink
         ? html`
             <div class="actions">
               ${showShopLink
                 ? html`
-                    <a class="btn ghost" href="https://www.rohlik.cz" target="_blank" rel="noopener">
-                      ${this.t("shop_link")}
+                    <a class="btn ghost" href=${shop.url} target="_blank" rel="noopener">
+                      ${this.t("shop_link", { shop: shop.name })}
                     </a>
                   `
                 : nothing}
@@ -335,6 +350,34 @@ export class RohlikDeliveryCard extends RohlikBaseCard<DeliveryCardConfig> {
     `;
   }
 
+  /** Upcoming order's lines with pictures, collapsed to the first few. */
+  private renderItems(items: OrderItemView[]): TemplateResult {
+    const visible = this.itemsExpanded ? items : items.slice(0, ITEMS_COLLAPSED);
+    return html`
+      <div class="items">
+        ${visible.map(
+          (item) => html`
+            <div class="row item-row">
+              ${item.image
+                ? html`<img class="thumb" src=${item.image} alt="" loading="lazy" referrerpolicy="no-referrer" />`
+                : html`<div class="thumb placeholder" aria-hidden="true"></div>`}
+              <span class="item-qty">${item.quantity}×</span>
+              <span class="item-name">${item.name}</span>
+              ${item.amount ? html`<span class="item-amount">${item.amount}</span>` : nothing}
+            </div>
+          `,
+        )}
+      </div>
+      ${items.length > ITEMS_COLLAPSED
+        ? html`
+            <button class="btn ghost show-toggle" @click=${() => (this.itemsExpanded = !this.itemsExpanded)}>
+              ${this.itemsExpanded ? this.t("show_less") : this.t("show_all", { count: items.length })}
+            </button>
+          `
+        : nothing}
+    `;
+  }
+
   private renderSlots(view: DeliveryView): TemplateResult {
     return html`<div class="slots">${view.slots.map((slot) => this.renderSlotRow(slot))}</div>`;
   }
@@ -344,7 +387,7 @@ export class RohlikDeliveryCard extends RohlikBaseCard<DeliveryCardConfig> {
       today: this.t("today"),
       tomorrow: this.t("tomorrow"),
     });
-    const price = slot.price === 0 ? this.t("free") : slot.price != null ? formatMoney(this.hass, slot.price) : "";
+    const price = slot.price === 0 ? this.t("free") : slot.price != null ? this.money(slot.price) : "";
     return html`
       <div class="slot-row">
         <ha-icon icon=${SLOT_ICON[slot.key]}></ha-icon>
@@ -430,7 +473,7 @@ export class RohlikDeliveryCard extends RohlikBaseCard<DeliveryCardConfig> {
 
   private renderSummary(view: DeliveryView): TemplateResult {
     const itemsLabel = this.t("items_count", { count: view.summaryItems ?? 0 });
-    const priceLabel = view.summaryPrice != null ? formatMoney(this.hass, view.summaryPrice) : "";
+    const priceLabel = view.summaryPrice != null ? this.money(view.summaryPrice) : "";
     return html`<span>${[itemsLabel, priceLabel].filter(Boolean).join(" · ")}</span>`;
   }
 }

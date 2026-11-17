@@ -101,7 +101,9 @@
       import { installShims, installFixedClock, buildHass, DEVICE_ID, writeDeliveredMemory, clearDeliveryMemory } from "./mock-hass.js";
 
       const params = new URLSearchParams(location.search);
-      const lang = params.get("lang") === "en" ? "en" : "cs";
+      const lang = ["en", "de"].includes(params.get("lang")) ? params.get("lang") : "cs";
+      const shop = params.get("shop") === "at" ? "at" : "cz";
+      const images = params.get("images") === "1";
       const theme = params.get("theme") === "dark" ? "dark" : "light";
       const state = ["arriving", "ordered", "none", "delivered"].includes(params.get("state"))
         ? params.get("state")
@@ -137,7 +139,7 @@
         await import("../../../dist/rohlik-cards.js");
         await Promise.all(ALL_TAGS.map((tag) => customElements.whenDefined(tag)));
 
-        const hass = buildHass({ lang, state });
+        const hass = buildHass({ lang, state, shop });
 
         const mounted = [];
         for (const tag of CARD_TAGS) {
@@ -145,7 +147,8 @@
           const el = document.createElement(tag);
           const config = { type: `custom:${tag}`, device: DEVICE_ID };
           if (tag === "rohlik-cart-card") {
-            config.min_order = 749;
+            config.min_order = shop === "at" ? 40 : 749;
+            if (images) config.show_images = true;
           }
           if (tag === "rohlik-spending-card" && period) {
             config.default_period = period;

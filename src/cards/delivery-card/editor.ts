@@ -11,6 +11,8 @@ export interface DeliveryCardConfig extends RohlikCardConfig {
   show_refresh?: boolean;
   show_slots?: boolean;
   show_shop_link?: boolean;
+  /** List the items (with pictures) of the upcoming order; needs HA-RohlikCZ with the `items` attribute. */
+  show_items?: boolean;
   compact?: boolean;
 }
 
@@ -28,6 +30,7 @@ export class RohlikDeliveryCardEditor extends RohlikBaseEditor<DeliveryCardConfi
     show_refresh: true,
     show_slots: true,
     show_shop_link: true,
+    show_items: true,
     compact: false,
   };
 
@@ -39,6 +42,7 @@ export class RohlikDeliveryCardEditor extends RohlikBaseEditor<DeliveryCardConfi
       { name: "show_refresh", selector: { boolean: {} } },
       { name: "show_slots", selector: { boolean: {} } },
       { name: "show_shop_link", selector: { boolean: {} } },
+      { name: "show_items", selector: { boolean: {} } },
       { name: "compact", selector: { boolean: {} } },
     ];
   }

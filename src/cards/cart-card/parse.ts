@@ -21,17 +21,22 @@ export interface CartLine {
   category?: string;
   brand?: string;
   productId?: number;
+  /** Product picture URL (HA-RohlikCZ adds an `Image:` description line). */
+  image?: string;
 }
 
-// Matches "<name> (<qty>) - <price> Kč". The name portion is captured greedily
-// so that, when the name itself contains parenthesised text (e.g. a pack
-// size), the regex backtracks to the *last* "(<int>)" before " - <price> Kč" —
-// which is always the real quantity marker HA-RohlikCZ appends.
-const SUMMARY_RE = /^(.+)\s*\((\d+)\)\s*-\s*(\d+(?:[.,]\d+)?)\s*Kč\s*$/;
+// Matches "<name> (<qty>) - <price> <currency>", e.g. "… (2) - 21.9 Kč" or
+// "… (1) - 2.49 EUR" (HA-RohlikCZ appends the shop's currency). The name
+// portion is captured greedily so that, when the name itself contains
+// parenthesised text (e.g. a pack size), the regex backtracks to the *last*
+// "(<int>)" before " - <price>" — which is always the real quantity marker
+// HA-RohlikCZ appends. The currency is any run of non-digit, non-space
+// characters ("Kč", "CZK", "EUR", "€", "Ft", "lei") and may be missing.
+const SUMMARY_RE = /^(.+)\s*\((\d+)\)\s*-\s*(\d+(?:[.,]\d+)?)\s*[^\d\s]*\s*$/;
 
 /**
  * Parses a single `todo` item into a `CartLine`, or `null` when `summary`
- * doesn't match the expected `"<name> (<qty>) - <price> Kč"` shape.
+ * doesn't match the expected `"<name> (<qty>) - <price> <currency>"` shape.
  */
 export function parseTodoItem(item: TodoItemInput): CartLine | null {
   if (!item || typeof item.summary !== "string") return null;
@@ -46,10 +51,11 @@ export function parseTodoItem(item: TodoItemInput): CartLine | null {
   if (!name || !Number.isFinite(quantity) || !Number.isFinite(price)) return null;
 
   const line: CartLine = { uid: item.uid, name, quantity, price };
-  const { category, brand, productId } = parseDescription(item.description);
+  const { category, brand, productId, image } = parseDescription(item.description);
   if (category !== undefined) line.category = category;
   if (brand !== undefined) line.brand = brand;
   if (productId !== undefined) line.productId = productId;
+  if (image !== undefined) line.image = image;
   return line;
 }
 
@@ -57,10 +63,12 @@ interface ParsedDescription {
   category?: string;
   brand?: string;
   productId?: number;
+  image?: string;
 }
 
 /**
- * Parses the `"Category: X\nBrand: Y\nProduct ID: 123"` description block.
+ * Parses the `"Category: X\nBrand: Y\nProduct ID: 123\nImage: https://…"`
+ * description block. `Image` is only accepted as an http(s) URL.
  * Every line is optional and order-independent; unknown lines are ignored.
  */
 function parseDescription(description: string | null | undefined): ParsedDescription {
@@ -83,7 +91,7 @@ function parseDescription(description: string | null | undefined): ParsedDescrip
     else if (key === "productid") {
       const id = parseInt(value, 10);
       if (Number.isFinite(id)) result.productId = id;
-    }
+    } else if (key === "image" && /^https?:\/\//i.test(value)) result.image = value;
   }
   return result;
 }
@@ -133,10 +141,13 @@ export interface CategoryGroup {
 /** Default Rohlík.cz checkout URL, used when `checkout_url` isn't configured. */
 export const DEFAULT_CHECKOUT_URL = "https://www.rohlik.cz/kosik";
 
-/** Resolves the checkout URL: a configured, non-blank URL, or the default. */
-export function resolveCheckoutUrl(checkoutUrl?: string): string {
+/**
+ * Resolves the checkout URL: a configured, non-blank URL, otherwise
+ * `fallback` (the shop's own checkout URL, see `core/shop.ts`).
+ */
+export function resolveCheckoutUrl(checkoutUrl?: string, fallback = DEFAULT_CHECKOUT_URL): string {
   const trimmed = checkoutUrl?.trim();
-  return trimmed ? trimmed : DEFAULT_CHECKOUT_URL;
+  return trimmed ? trimmed : fallback;
 }
 
 /**

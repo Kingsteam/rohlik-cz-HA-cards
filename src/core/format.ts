@@ -89,14 +89,15 @@ export function formatRelativeDay(hass: HomeAssistant, date: Date, dict: Relativ
 /**
  * Locale affixes wrapping a relative duration, e.g. en future "in {}",
  * cs future "za {}", en past "{} ago", cs past "před {}". Derived from
- * `Intl.RelativeTimeFormat` word order for the two languages this project
- * ships (cs/en); unrecognised languages fall back to the English affixes
+ * `Intl.RelativeTimeFormat` word order for the languages this project
+ * ships (cs/en/de); unrecognised languages fall back to the English affixes
  * while the duration itself still comes from `Intl.NumberFormat`, so output
  * stays grammatically odd rather than wrong.
  */
 const RELATIVE_AFFIXES: Record<string, { future: [string, string]; past: [string, string] }> = {
   en: { future: ["in ", ""], past: ["", " ago"] },
   cs: { future: ["za ", ""], past: ["před ", ""] },
+  de: { future: ["in ", ""], past: ["vor ", ""] },
 };
 
 function affixesFor(locale: string, tense: "future" | "past"): [string, string] {

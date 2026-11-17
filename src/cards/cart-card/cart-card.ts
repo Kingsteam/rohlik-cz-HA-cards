@@ -7,7 +7,6 @@ import { RohlikBaseCard, type RohlikCardConfig } from "../../core/base-card";
 import type { HomeAssistant, LovelaceGridOptions } from "../../core/types";
 import { registerCard } from "../../core/register";
 import { getConfigEntryId, callRohlik } from "../../core/actions";
-import { formatMoney } from "../../core/format";
 import { sharedStyles } from "../../core/styles";
 import { cartStyles } from "./styles";
 import { strings } from "./strings";
@@ -33,7 +32,10 @@ export interface CartCardConfig extends RohlikCardConfig {
   /** Minimum order value in CZK used for the "below minimum" hint; 0 = do not judge. */
   min_order?: number;
   show_order_button?: boolean;
+  /** Empty = the shop's own checkout page (Rohlík.cz cart, other shops' home page). */
   checkout_url?: string;
+  /** Show product pictures in cart lines and search results (needs HA-RohlikCZ with images). */
+  show_images?: boolean;
 }
 
 interface SearchResult {
@@ -42,6 +44,7 @@ interface SearchResult {
   price: string;
   brand?: string;
   amount?: string;
+  image?: string | null;
 }
 
 interface SearchProductResponse {
@@ -552,14 +555,14 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
                   : nothing}
         </div>
 
-        <div class="big">${formatMoney(this.hass, Number.isFinite(total) ? total : 0)}</div>
+        <div class="big">${this.money(Number.isFinite(total) ? total : 0)}</div>
         <div class="caption">
           ${isEmpty ? this.t("empty_cart") : this.t("items_count", { count: totalItems })}
         </div>
         ${isEmpty ? this.renderEmptyHint() : nothing}
         ${belowMinimum && !isEmpty
           ? html`<div class="hint minimum-hint">
-              ${this.t("below_minimum_by", { amount: formatMoney(this.hass, minOrder - total) })}
+              ${this.t("below_minimum_by", { amount: this.money(minOrder - total) })}
             </div>`
           : nothing}
         ${this.error ? html`<div class="error">${this.error}</div>` : nothing}
@@ -587,7 +590,8 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
   }
 
   private renderOrderButton(enabled: boolean): TemplateResult {
-    const url = resolveCheckoutUrl(this.config.checkout_url);
+    const shop = this.shop();
+    const url = resolveCheckoutUrl(this.config.checkout_url, shop.checkoutUrl);
     return html`
       <a
         class=${classMap({ btn: true, order: true, disabled: !enabled })}
@@ -595,7 +599,7 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
         target="_blank"
         rel="noopener noreferrer"
         aria-disabled=${enabled ? nothing : "true"}
-        title=${enabled ? this.t("order_hint") : this.t("empty_cart")}
+        title=${enabled ? this.t("order_hint", { shop: shop.name }) : this.t("empty_cart")}
       >
         <ha-icon icon="mdi:cart-arrow-right"></ha-icon>
         ${this.t("order")}
@@ -624,7 +628,7 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
               ? `cart-search-option-${this.highlightedIndex}`
               : nothing}
             .value=${this.searchQuery}
-            placeholder=${this.t("search_placeholder")}
+            placeholder=${this.t("search_placeholder", { shop: this.shop().name })}
             @input=${this.onSearchInput}
             @keydown=${this.onSearchKeydown}
             @focus=${this.onSearchFocus}
@@ -692,6 +696,7 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
         aria-selected=${highlighted ? "true" : "false"}
         @pointerenter=${() => (this.highlightedIndex = index)}
       >
+        ${this.renderThumb(result.image)}
         <div class="cell">
           <div class="name">${result.name}</div>
           ${secondary ? html`<div class="secondary">${secondary}</div>` : nothing}
@@ -706,6 +711,17 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
         </button>
       </div>
     `;
+  }
+
+  /**
+   * Product picture for a cart line or search result when `show_images` is
+   * on. A missing picture keeps an empty placeholder so rows stay aligned.
+   */
+  private renderThumb(image?: string | null): TemplateResult | typeof nothing {
+    if (this.config.show_images !== true) return nothing;
+    return image
+      ? html`<img class="thumb" src=${image} alt="" loading="lazy" referrerpolicy="no-referrer" />`
+      : html`<div class="thumb placeholder" aria-hidden="true"></div>`;
   }
 
   private renderLines(grouped: boolean, showBrand: boolean, maxItems: number): TemplateResult {
@@ -756,6 +772,7 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
 
     return html`
       <div class=${classMap({ row: true, "cart-line": true, pending })}>
+        ${this.renderThumb(line.image)}
         <div class="cell">
           <div class="name">${line.name}</div>
           ${secondary ? html`<div class="secondary">${secondary}</div>` : nothing}
@@ -779,7 +796,7 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
               +
             </button>
           </div>
-          <div class="line-price">${formatMoney(this.hass, line.price)}</div>
+          <div class="line-price">${this.money(line.price)}</div>
           <button
             class="icon-btn remove"
             ?disabled=${pending}

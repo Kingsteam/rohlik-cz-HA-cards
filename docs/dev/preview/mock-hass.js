@@ -241,6 +241,28 @@ const CART_ITEMS = [
 ];
 const CART_TOTAL = CART_ITEMS.reduce((sum, i) => sum + i.price, 0); // 935.4
 
+// ---- Gurkerl.at variant (`?shop=at`): EUR prices, German names, pictures ----
+// Made-up products; the pictures are simple local SVGs (docs/dev/preview/thumbs).
+const thumb = (name) => new URL(`./thumbs/${name}.svg`, import.meta.url).href;
+const CART_ITEMS_AT = [
+  { name: "Bergbauern-Vollmilch 1 l", qty: 2, price: 3.58, category: "Milchprodukte", brand: "Testhof", id: 300101, image: thumb("milch") },
+  { name: "Kaisersemmel", qty: 4, price: 2.36, category: "Brot & Gebäck", brand: "Testbäckerei", id: 300102, image: thumb("semmel") },
+  { name: "Bio-Eier M, 10 Stück", qty: 1, price: 4.99, category: "Milchprodukte", brand: "Testhof", id: 300103, image: thumb("eier") },
+  { name: "Bananen 1 kg", qty: 1, price: 1.99, category: "Obst & Gemüse", brand: "", id: 300104, image: thumb("banane") },
+  { name: "Äpfel Gala 1 kg", qty: 1, price: 2.79, category: "Obst & Gemüse", brand: "", id: 300105, image: null },
+  { name: "Mineralwasser 1,5 l", qty: 6, price: 4.74, category: "Getränke", brand: "Testquelle", id: 300106, image: thumb("wasser") },
+];
+const CART_TOTAL_AT = Math.round(CART_ITEMS_AT.reduce((sum, i) => sum + i.price, 0) * 100) / 100;
+const ORDER_ITEMS_AT = [
+  { id: 300101, name: "Bergbauern-Vollmilch 1 l", quantity: 2, price: 3.58, textual_amount: "1 l", image: thumb("milch") },
+  { id: 300102, name: "Kaisersemmel", quantity: 6, price: 3.54, textual_amount: "1 Stück", image: thumb("semmel") },
+  { id: 300107, name: "Spaghetti 500 g", quantity: 2, price: 3.98, textual_amount: "500 g", image: thumb("nudeln") },
+  { id: 300108, name: "Teebutter 250 g", quantity: 1, price: 3.49, textual_amount: "250 g", image: thumb("butter") },
+  { id: 300104, name: "Bananen 1 kg", quantity: 1, price: 1.99, textual_amount: "ca. 1 kg", image: thumb("banane") },
+  { id: 300105, name: "Äpfel Gala 1 kg", quantity: 1, price: 2.79, textual_amount: "1 kg", image: null },
+  { id: 300103, name: "Bio-Eier M, 10 Stück", quantity: 1, price: 4.99, textual_amount: "10 Stück", image: thumb("eier") },
+];
+
 // ---- Spending analytics ----
 const BY_YEAR = {
   2023: { total: 18320.5, order_count: 40 },
@@ -363,9 +385,15 @@ const MONTHLY_HISTORY = [
 
 /**
  * Builds a full mock `hass` object for `state` ("arriving" | "ordered" |
- * "none" | "delivered") in `lang` ("cs" | "en").
+ * "none" | "delivered") in `lang` ("cs" | "en" | "de"). `shop: "at"` swaps
+ * in a Gurkerl.at account (EUR, German product names, pictures and the
+ * upcoming order's `items`).
  */
-export function buildHass({ lang = "cs", state = "arriving" } = {}) {
+export function buildHass({ lang = "cs", state = "arriving", shop = "cz" } = {}) {
+  const at = shop === "at";
+  const cartItems = at ? CART_ITEMS_AT : CART_ITEMS;
+  const cartTotal = at ? CART_TOTAL_AT : CART_TOTAL;
+  const currency = at ? "EUR" : "Kč";
   const states = {};
   const entities = {};
 
@@ -403,7 +431,16 @@ export function buildHass({ lang = "cs", state = "arriving" } = {}) {
       status: "confirmed",
     };
   }
-  add("binary_sensor", "is_ordered", isOrdered ? "on" : "off", orderData ? { order_data: orderData } : {});
+  if (at && orderData) {
+    orderData.itemsCount = ORDER_ITEMS_AT.length;
+    orderData.priceComposition = { total: { amount: 24.36 } };
+  }
+  add(
+    "binary_sensor",
+    "is_ordered",
+    isOrdered ? "on" : "off",
+    orderData ? { order_data: orderData, ...(at ? { items: ORDER_ITEMS_AT } : {}) } : {},
+  );
 
   add(
     "binary_sensor",
@@ -452,7 +489,7 @@ export function buildHass({ lang = "cs", state = "arriving" } = {}) {
       "Additional Content": "Řidič: Petr K. · SPZ 5A1 2345",
     });
   } else if (state === "ordered") {
-    add("sensor", "delivery_info", "Objednávka byla přijata a připravuje se", {
+    add("sensor", "delivery_info", at ? "Die Bestellung wurde angenommen und wird vorbereitet" : "Objednávka byla přijata a připravuje se", {
       "Order Id": "24681099",
       "Updated At": "2026-09-13T17:32:00+02:00",
       Title: "Stav objednávky",
@@ -483,7 +520,7 @@ export function buildHass({ lang = "cs", state = "arriving" } = {}) {
   }
 
   // ---- sensor: cart ----
-  add("sensor", "cart_price", CART_TOTAL, { "Total items": CART_ITEMS.length, "Can Order": false });
+  add("sensor", "cart_price", cartTotal, { "Total items": cartItems.length, "Can Order": false });
 
   // ---- sensor: account ----
   add("sensor", "credit_amount", 312, {});
@@ -549,7 +586,7 @@ export function buildHass({ lang = "cs", state = "arriving" } = {}) {
   addItems("items_all_time", ITEMS_ALL);
 
   // ---- todo ----
-  states[CART_ENTITY_ID] = st(CART_ITEMS.length, {});
+  states[CART_ENTITY_ID] = st(cartItems.length, {});
   entities[CART_ENTITY_ID] = {
     entity_id: CART_ENTITY_ID,
     device_id: DEVICE_ID,
@@ -564,7 +601,12 @@ export function buildHass({ lang = "cs", state = "arriving" } = {}) {
     states,
     entities,
     devices: {
-      [DEVICE_ID]: { id: DEVICE_ID, name: DEVICE_NAME, name_by_user: null, manufacturer: "Rohlík.cz" },
+      [DEVICE_ID]: {
+        id: DEVICE_ID,
+        name: at ? "Testkonto" : DEVICE_NAME,
+        name_by_user: null,
+        manufacturer: at ? "Gurkerl.at" : "Rohlík.cz",
+      },
     },
     language: lang,
     locale: { language: lang },
@@ -579,11 +621,13 @@ export function buildHass({ lang = "cs", state = "arriving" } = {}) {
       }
       if (msg.type === "todo/item/list") {
         return {
-          items: CART_ITEMS.map((item, i) => ({
+          items: cartItems.map((item, i) => ({
             uid: `cart-item-${i + 1}`,
-            summary: `${item.name} (${item.qty}) - ${item.price} Kč`,
+            summary: `${item.name} (${item.qty}) - ${item.price} ${currency}`,
             status: "needs_action",
-            description: `Category: ${item.category}\nBrand: ${item.brand}\nProduct ID: ${item.id}`,
+            description:
+              `Category: ${item.category}\nBrand: ${item.brand}\nProduct ID: ${item.id}` +
+              (item.image ? `\nImage: ${item.image}` : ""),
           })),
         };
       }
@@ -603,6 +647,18 @@ export function buildHass({ lang = "cs", state = "arriving" } = {}) {
 
     async callService(domain, service, data, target, notifyOnError, returnResponse) {
       callLog.push({ type: "callService", domain, service, data, target, returnResponse });
+      if (domain === "rohlikcz" && service === "search_product" && at) {
+        return {
+          context: {},
+          response: {
+            search_results: [
+              { id: 300101, name: "Bergbauern-Vollmilch 1 l", price: "1.79 EUR", brand: "Testhof", amount: "1 l", image: thumb("milch") },
+              { id: 300109, name: "Haltbarmilch 3,5 % 1 l", price: "1.29 EUR", brand: "Testhof", amount: "1 l", image: null },
+              { id: 300110, name: "Hafermilch 1 l", price: "2.19 EUR", brand: "Testmühle", amount: "1 l", image: thumb("wasser") },
+            ],
+          },
+        };
+      }
       if (domain === "rohlikcz" && service === "search_product") {
         return {
           context: {},

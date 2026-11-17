@@ -29,6 +29,20 @@ export const strings: Dict = {
     layout_row: "Row",
     layout_column: "Column",
   },
+  de: {
+    title: "Liefertermine",
+    slot_express: "Express",
+    slot_standard: "Standard",
+    slot_eco: "Öko",
+    express_available: "Express verfügbar",
+    no_express: "Kein Express",
+    watch_toggle: "Express beobachten",
+    watch_error: "Aktualisieren fehlgeschlagen",
+    no_entities: "Auf diesem Gerät wurden keine Rohlík-Entitäten gefunden",
+    layout_auto: "Automatisch",
+    layout_row: "Zeile",
+    layout_column: "Spalte",
+  },
 };
 
 export const labels: Dict = {
@@ -49,5 +63,14 @@ export const labels: Dict = {
     show_price: "Show price",
     show_location: "Show location",
     watch_interval: "Watch interval (s)",
+  },
+  de: {
+    device: "Gerät",
+    name: "Eigener Name",
+    slots: "Angezeigte Termine",
+    layout: "Anordnung",
+    show_price: "Preis anzeigen",
+    show_location: "Adresse anzeigen",
+    watch_interval: "Intervall beim Beobachten (s)",
   },
 };

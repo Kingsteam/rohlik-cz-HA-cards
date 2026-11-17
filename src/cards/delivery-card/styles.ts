@@ -225,6 +225,41 @@ export const deliveryCardStyles = css`
   /* :host sets container-type: inline-size (core/styles.ts) — this queries
      the card's own rendered width, not the viewport, so it also kicks in
      for a narrow column in a dashboard grid, not just a phone screen. */
+  .items {
+    --rohlik-thumb-size: 36px;
+    margin-top: 4px;
+  }
+
+  .item-row {
+    padding: 6px 0;
+  }
+
+  .item-qty {
+    flex: none;
+    min-width: 2.2em;
+    color: var(--secondary-text-color);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .item-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .item-amount {
+    flex: none;
+    color: var(--secondary-text-color);
+    font-size: 0.85rem;
+  }
+
+  .show-toggle {
+    display: block;
+    margin: 8px auto 0;
+  }
+
   @container (max-width: 520px) {
     .header {
       flex-wrap: wrap;
