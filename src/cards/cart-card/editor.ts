@@ -2,6 +2,7 @@ import { customElement } from "lit/decorators.js";
 import { RohlikBaseEditor, type HaFormSchema } from "../../core/editor";
 import type { RohlikCardConfig } from "../../core/base-card";
 import { labels } from "./strings";
+import { shopForDevice } from "../../core/shop";
 
 export interface CartCardConfig extends RohlikCardConfig {
   type: "custom:rohlik-cart-card";
@@ -41,7 +42,7 @@ export class RohlikCartCardEditor extends RohlikBaseEditor<CartCardConfig> {
       { name: "show_images", selector: { boolean: {} } },
       { name: "max_items", selector: { number: { min: 0, max: 50, mode: "box" } } },
       { name: "list_max_height", selector: { number: { min: 0, max: 2000, step: 10, mode: "box", unit_of_measurement: "px" } } },
-      { name: "min_order", selector: { number: { min: 0, max: 5000, step: 10, mode: "box", unit_of_measurement: "Kč" } } },
+      { name: "min_order", selector: { number: { min: 0, max: 5000, step: 10, mode: "box", unit_of_measurement: shopForDevice(this.hass, this.config?.device).currency } } },
       { name: "show_order_button", selector: { boolean: {} } },
       { name: "checkout_url", selector: { text: {} } },
     ];

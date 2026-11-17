@@ -29,7 +29,7 @@ export interface CartCardConfig extends RohlikCardConfig {
   max_items?: number;
   /** Max height of the item list in px before it scrolls; 0 = unlimited. */
   list_max_height?: number;
-  /** Minimum order value in CZK used for the "below minimum" hint; 0 = do not judge. */
+  /** Minimum order value in the shop's currency for the "below minimum" hint; 0 = do not judge. */
   min_order?: number;
   show_order_button?: boolean;
   /** Empty = the shop's own checkout page (Rohlík.cz cart, other shops' home page). */

@@ -101,7 +101,7 @@ export class RohlikAccountCard extends RohlikBaseCard<AccountCardConfig> {
         const value = typeof max === "number" ? `${current} / ${max}` : String(current);
         let caption: string | undefined;
         if (typeof depositAmount === "number" && depositAmount > 0) {
-          const currency = typeof depositCurrency === "string" ? depositCurrency : "CZK";
+          const currency = typeof depositCurrency === "string" ? depositCurrency : this.shop().currency;
           caption = this.t("deposit_caption", {
             amount: formatMoney(this.hass, depositAmount, currency),
           });
