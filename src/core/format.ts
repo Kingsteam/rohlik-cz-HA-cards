@@ -172,7 +172,7 @@ export function formatCountdown(hass: HomeAssistant, date: Date): string {
 }
 
 /**
- * A whole number of minutes as "12 min" / "1 h 20 min", or with the
+ * A whole number of minutes as "12 min" / "1 hr 20 min" (en; cs "1 h 20 min"), or with the
  * locale's future affixes ("in 12 min" / "za 12 min") when `relative`.
  */
 export function formatMinutes(hass: HomeAssistant, minutes: number, relative = false): string {

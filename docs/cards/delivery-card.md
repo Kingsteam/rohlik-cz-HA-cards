@@ -20,7 +20,7 @@ companion badge, `rohlik-delivery-badge`.
 | `show_slots`           | boolean | `true`  | In the "no order" state, show up to three compact upcoming-slot rows (Express/Standard/Eco). |
 | `show_shop_link`       | boolean | `true`  | In the "delivered" state, show an "Order again on <shop>" link (your account's shop: Rohlík.cz, Knuspr.de, …). |
 | `show_tracking`        | boolean | `true`  | With HA-RohlikCZ 1.3+, show live courier tracking: a Queued → On the way → At the door → Delivered stepper and a "2 stops before you · 1.4 km away" line. Hidden when the shop provides no tracking. |
-| `show_countdown`       | boolean | `true`  | With HA-RohlikCZ 1.3+, in the last 90 minutes before the courier's estimate the headline becomes the minutes left ("16 min", "Now"), with the clock time in the caption. When the courier is close (`last_mile`) the card border and headline take the accent colour; at the door they turn amber. |
+| `show_countdown`       | boolean | `true`  | With HA-RohlikCZ 1.3+, in the last 90 minutes before the courier's estimate the headline becomes the minutes left ("16 min"), counted down in the card, with the clock time in the caption. Once the estimate has passed the headline goes back to the clock time, so a late courier stays visible; at the door it reads "Now". Compact mode keeps the clock time. When the courier is close (`last_mile`) the card border and headline take the accent colour; at the door they turn amber. |
 | `compact`              | boolean | `false` | Single-row layout: icon, headline, chip — no track, no rows. |
 | `tap_action`           | string  | —       | Set to `none` to disable tapping the card to open the `is_ordered` more-info dialog. |
 

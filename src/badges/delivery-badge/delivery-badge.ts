@@ -155,6 +155,23 @@ export class RohlikDeliveryBadge extends LitElement {
     }
   }
 
+  private tickTimer: ReturnType<typeof setInterval> | undefined;
+
+  public connectedCallback(): void {
+    super.connectedCallback();
+    // The countdown and "ordered in N" values move on their own; re-render
+    // like the card does, so they don't freeze between HA updates.
+    this.tickTimer = setInterval(() => this.requestUpdate(), 30_000);
+  }
+
+  public disconnectedCallback(): void {
+    super.disconnectedCallback();
+    if (this.tickTimer !== undefined) {
+      clearInterval(this.tickTimer);
+      this.tickTimer = undefined;
+    }
+  }
+
   public static getConfigElement(): HTMLElement {
     return document.createElement("rohlik-delivery-badge-editor");
   }
@@ -244,12 +261,10 @@ export class RohlikDeliveryBadge extends LitElement {
       case "arriving": {
         const { phase, stopsBefore } = view.tracking;
         if (phase === "at_door") return this.t("now");
-        const minutes = liveCountdownMinutes(view);
+        const minutes = liveCountdownMinutes(view, new Date());
         // Without an estimate, the window end is a deadline, not an ETA.
         const time = minutes != null
-          ? minutes === 0
-            ? this.t("now")
-            : formatMinutes(this.hass, minutes, true)
+          ? formatMinutes(this.hass, minutes, true)
           : view.eta
           ? formatTime(this.hass, view.eta)
           : view.till

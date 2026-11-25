@@ -209,7 +209,7 @@ export class RohlikDeliveryCard extends RohlikBaseCard<DeliveryCardConfig> {
       >
         <ha-icon icon="mdi:truck-delivery"></ha-icon>
         <div class="headline">
-          <span class="big">${this.headlineMain(view)}</span>
+          <span class="big">${this.headlineMain(view, true)}</span>
         </div>
         ${this.renderStateChip(view)}
       </div>
@@ -315,21 +315,23 @@ export class RohlikDeliveryCard extends RohlikBaseCard<DeliveryCardConfig> {
 
   /** Countdown minutes for the headline, honouring `show_countdown`. */
   private countdown(view: DeliveryView): number | null {
-    return this.config.show_countdown === false ? null : liveCountdownMinutes(view);
+    return this.config.show_countdown === false ? null : liveCountdownMinutes(view, new Date());
   }
 
   /** The courier is close: the card frame takes the accent (amber at the door). */
   private closeClass(view: DeliveryView): Record<string, boolean> {
-    const active = view.state === "arriving";
+    const active = view.state === "arriving" && this.config.show_countdown !== false;
     const atDoor = active && view.tracking.phase === "at_door";
     return { "last-mile": active && view.tracking.lastMile && !atDoor, "at-door": atDoor };
   }
 
-  private headlineMain(view: DeliveryView): string {
+  private headlineMain(view: DeliveryView, compact = false): string {
     switch (view.state) {
       case "arriving": {
-        const minutes = this.countdown(view);
-        if (minutes != null) return minutes === 0 ? this.t("now") : formatMinutes(this.hass, minutes);
+        if (view.tracking.phase === "at_door") return this.t("now");
+        // Compact mode has no caption to carry the clock time, so it keeps it.
+        const minutes = compact ? null : this.countdown(view);
+        if (minutes != null) return formatMinutes(this.hass, minutes);
         return view.eta ? formatTime(this.hass, view.eta) : view.till ? formatTime(this.hass, view.till) : "—";
       }
       case "ordered":

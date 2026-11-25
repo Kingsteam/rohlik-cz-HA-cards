@@ -350,13 +350,21 @@ export const COUNTDOWN_WINDOW_MIN = 90;
 
 /**
  * Minutes to show as a live countdown headline, or null to show the clock
- * time instead. Only while arriving with a real estimate (not just the
- * booked slot) and `delivery_time_remaining` within the ticking window —
- * the integration counts it down every minute, so the card needs no timer.
+ * time instead.
+ *
+ * Counted locally from the ETA (rounded up, like the integration), so it
+ * keeps moving when HA updates stop and doesn't depend on the display unit
+ * the user picked for `delivery_time_remaining`. That sensor only gates the
+ * feature: it exists on HA-RohlikCZ 1.3+, where `delivery_time` is a real
+ * courier estimate. Null while not arriving, without a real estimate (the
+ * slot start is dropped in input.ts), beyond the 90-minute window, and once
+ * the ETA has passed — a late courier then shows the overdue clock time
+ * instead of a misleading "now".
  */
-export function liveCountdownMinutes(view: DeliveryView): number | null {
-  const minutes = view.tracking.minutesLeft;
-  if (view.state !== "arriving" || !view.eta || minutes == null) return null;
-  if (minutes < 0 || minutes > COUNTDOWN_WINDOW_MIN) return null;
-  return minutes;
+export function liveCountdownMinutes(view: DeliveryView, now: Date): number | null {
+  if (view.state !== "arriving" || !view.eta || view.tracking.minutesLeft == null) return null;
+  const seconds = (view.eta.getTime() - now.getTime()) / 1000;
+  if (seconds <= 0) return null;
+  const minutes = Math.ceil(seconds / 60);
+  return minutes > COUNTDOWN_WINDOW_MIN ? null : minutes;
 }

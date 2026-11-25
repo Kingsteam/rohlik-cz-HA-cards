@@ -32,22 +32,38 @@ function input(overrides: Partial<DeliveryStateInput> = {}): DeliveryStateInput 
 }
 
 describe("liveCountdownMinutes", () => {
-  it("counts down while arriving within 90 minutes", () => {
-    expect(liveCountdownMinutes(computeDeliveryState(input(), NOW))).toBe(16);
+  const at = (iso: string) => new Date(iso);
+
+  it("counts down locally from the ETA while arriving within 90 minutes", () => {
+    const view = computeDeliveryState(input(), NOW);
+    expect(liveCountdownMinutes(view, NOW)).toBe(16);
+    // Keeps moving without HA updates, rounding up like the integration.
+    expect(liveCountdownMinutes(view, at("2026-09-13T15:50:30Z"))).toBe(8);
+    expect(liveCountdownMinutes(view, at("2026-09-13T15:57:30Z"))).toBe(1);
+  });
+
+  it("ignores the sensor's value, so a changed display unit can't skew it", () => {
+    const hours = input();
+    hours.tracking!.minutesLeft = 0.25;
+    expect(liveCountdownMinutes(computeDeliveryState(hours, NOW), NOW)).toBe(16);
+  });
+
+  it("gives way to the clock time once the ETA has passed (late courier)", () => {
+    const view = computeDeliveryState(input(), NOW);
+    expect(liveCountdownMinutes(view, at("2026-09-13T15:58:00Z"))).toBeNull();
+    expect(liveCountdownMinutes(view, at("2026-09-13T16:30:00Z"))).toBeNull();
   });
 
   it("is null far from the ETA, without an estimate, or before the window", () => {
-    const far = input();
-    far.tracking!.minutesLeft = 120;
-    expect(liveCountdownMinutes(computeDeliveryState(far, NOW))).toBeNull();
-    expect(liveCountdownMinutes(computeDeliveryState(input({ eta: null }), NOW))).toBeNull();
+    expect(liveCountdownMinutes(computeDeliveryState(input({ eta: at("2026-09-13T17:30:00Z") }), NOW), NOW)).toBeNull();
+    expect(liveCountdownMinutes(computeDeliveryState(input({ eta: null }), NOW), NOW)).toBeNull();
     const queued = input({ since: new Date("2026-09-13T18:00:00Z") });
     queued.tracking!.status = "in_queue";
-    expect(liveCountdownMinutes(computeDeliveryState(queued, NOW))).toBeNull();
+    expect(liveCountdownMinutes(computeDeliveryState(queued, NOW), NOW)).toBeNull();
   });
 
   it("is null without the integration's remaining-time sensor (older versions)", () => {
-    expect(liveCountdownMinutes(computeDeliveryState(input({ tracking: null }), NOW))).toBeNull();
+    expect(liveCountdownMinutes(computeDeliveryState(input({ tracking: null }), NOW), NOW)).toBeNull();
   });
 });
 
