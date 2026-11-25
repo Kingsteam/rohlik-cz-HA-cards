@@ -7,7 +7,7 @@ import { openMoreInfo } from "../../core/actions";
 import { formatMinutes, formatRelativeDay, formatTime } from "../../core/format";
 import { coreStrings, localize, withLanguage, type CardLanguage } from "../../core/localize";
 import { registerBadge } from "../../core/register";
-import { computeDeliveryState, liveCountdownMinutes, type DeliveryStateInput, type DeliveryView } from "../../cards/delivery-card/state";
+import { arrivingHeadline, computeDeliveryState, type DeliveryStateInput, type DeliveryView } from "../../cards/delivery-card/state";
 import { readDeliveryInput } from "../../cards/delivery-card/input";
 import { strings } from "./strings";
 import "./editor";
@@ -259,17 +259,18 @@ export class RohlikDeliveryBadge extends LitElement {
   private value(view: DeliveryView): string {
     switch (view.state) {
       case "arriving": {
-        const { phase, stopsBefore } = view.tracking;
-        if (phase === "at_door") return this.t("now");
-        const minutes = liveCountdownMinutes(view, new Date());
-        // Without an estimate, the window end is a deadline, not an ETA.
-        const time = minutes != null
-          ? formatMinutes(this.hass, minutes, true)
-          : view.eta
-          ? formatTime(this.hass, view.eta)
-          : view.till
-            ? `${this.t("by")} ${formatTime(this.hass, view.till)}`
-            : "—";
+        const { stopsBefore } = view.tracking;
+        const head = arrivingHeadline(view, new Date());
+        if (head.kind === "now") return this.t("now");
+        const time =
+          head.kind === "countdown"
+            ? formatMinutes(this.hass, head.minutes, true)
+            : head.kind === "eta"
+              ? formatTime(this.hass, head.at)
+              : head.kind === "by"
+                ? // Without an estimate, the window end is a deadline, not an ETA.
+                  `${this.t("by")} ${formatTime(this.hass, head.at)}`
+                : "—";
         if (stopsBefore == null) return time;
         const stops = stopsBefore === 0 ? this.t("you_are_next") : this.t("stops_short", { count: stopsBefore });
         return `${time} · ${stops}`;

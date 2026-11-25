@@ -89,8 +89,13 @@ function writeStored(storage: StorageLike, device: string, record: StoredMemory)
 
 function toMemory(stored: StoredMemory): RecentDeliveryMemory | null {
   if (!stored.endedAt) return null;
-  const endedAt = new Date(stored.endedAt);
+  let endedAt = new Date(stored.endedAt);
   if (Number.isNaN(endedAt.getTime())) return null;
+  // The "delivered" window ages from the later of `till` and `endedAt`. With
+  // a tracked delivery moment, age from that moment, not from when this
+  // browser happened to notice `is_ordered` flip off.
+  const delivered = stored.deliveredAt ? new Date(stored.deliveredAt) : null;
+  if (delivered && !Number.isNaN(delivered.getTime()) && delivered < endedAt) endedAt = delivered;
   // A tracked delivery moment beats the booked window end.
   const tillIso = stored.deliveredAt ?? stored.till;
   const till = tillIso ? new Date(tillIso) : null;

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { computeDeliveryState, liveCountdownMinutes, type DeliveryStateInput } from "../src/cards/delivery-card/state";
+import {
+  arrivingHeadline,
+  computeDeliveryState,
+  liveCountdownMinutes,
+  type DeliveryStateInput,
+} from "../src/cards/delivery-card/state";
 import { formatMinutes } from "../src/core/format";
 import { suggestForKeys } from "../src/core/register";
 import type { HomeAssistant } from "../src/core/types";
@@ -98,5 +103,43 @@ describe("suggestForKeys", () => {
     expect(suggest(hass, "sensor.x_cart_total")).toBeNull();
     expect(suggest(hass, "sensor.other")).toBeNull();
     expect(suggest(hass, "sensor.missing")).toBeNull();
+  });
+});
+
+describe("arrivingHeadline", () => {
+  const view = (overrides: Partial<DeliveryStateInput> = {}) => computeDeliveryState(input(overrides), NOW);
+
+  it("counts down when live, else shows the estimated clock time", () => {
+    expect(arrivingHeadline(view(), NOW)).toEqual({ kind: "countdown", minutes: 16 });
+    expect(arrivingHeadline(view(), NOW, false)).toEqual({ kind: "eta", at: new Date("2026-09-13T15:58:00Z") });
+  });
+
+  it("says now at the door only when live (not compact / show_countdown off)", () => {
+    const atDoor = input();
+    atDoor.tracking!.courierAtDoor = true;
+    const v = computeDeliveryState(atDoor, NOW);
+    expect(arrivingHeadline(v, NOW)).toEqual({ kind: "now" });
+    expect(arrivingHeadline(v, NOW, false).kind).toBe("eta");
+  });
+
+  it("shows the overdue clock time for a late courier", () => {
+    expect(arrivingHeadline(view(), new Date("2026-09-13T16:30:00Z")).kind).toBe("eta");
+  });
+
+  it("falls back to 'by' the window end without an estimate, and none without a window", () => {
+    expect(arrivingHeadline(view({ eta: null }), NOW)).toEqual({ kind: "by", at: new Date("2026-09-13T17:00:00Z") });
+    expect(arrivingHeadline(view({ eta: null, till: null }), NOW)).toEqual({ kind: "none" });
+  });
+});
+
+describe("last mile without live tracking", () => {
+  it("keeps last_mile when the courier status is unknown (announcement ETA)", () => {
+    const noStatus = input();
+    noStatus.tracking!.status = null;
+    noStatus.tracking!.lastMile = true;
+    noStatus.tracking!.etaSource = "announcement";
+    const v = computeDeliveryState(noStatus, NOW);
+    expect(v.tracking.lastMile).toBe(true);
+    expect(v.tracking.phase).toBeNull();
   });
 });

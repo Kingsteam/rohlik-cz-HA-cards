@@ -289,7 +289,15 @@ export function computeDeliveryState(input: DeliveryStateInput, now: Date): Deli
           lastMile: input.tracking.lastMile,
         }
       : input.tracking && state !== "none"
-        ? { ...EMPTY_TRACKING, minutesLeft: input.tracking.minutesLeft, etaSource: input.tracking.etaSource }
+        ? {
+            // No matching courier status (e.g. a shop without live tracking):
+            // the ETA-derived facts still apply — the integration turns
+            // last_mile on for announcement ETAs too.
+            ...EMPTY_TRACKING,
+            minutesLeft: input.tracking.minutesLeft,
+            etaSource: input.tracking.etaSource,
+            lastMile: input.tracking.lastMile,
+          }
         : EMPTY_TRACKING;
 
   // Only meaningful in the "none" state, but computing it unconditionally
@@ -367,4 +375,27 @@ export function liveCountdownMinutes(view: DeliveryView, now: Date): number | nu
   if (seconds <= 0) return null;
   const minutes = Math.ceil(seconds / 60);
   return minutes > COUNTDOWN_WINDOW_MIN ? null : minutes;
+}
+
+/** What the "arriving" headline shows; the card and badge format it. */
+export type ArrivingHeadline =
+  | { kind: "now" }
+  | { kind: "countdown"; minutes: number }
+  | { kind: "eta"; at: Date }
+  | { kind: "by"; at: Date }
+  | { kind: "none" };
+
+/**
+ * Decides the "arriving" headline: "Now" at the door, a minutes countdown
+ * in the last 90 minutes, else the estimated clock time, else "by" the
+ * window end. `live` turns the first two off (the card's `show_countdown:
+ * false` and compact mode, which has no caption to carry the clock time).
+ */
+export function arrivingHeadline(view: DeliveryView, now: Date, live = true): ArrivingHeadline {
+  if (live && view.tracking.phase === "at_door") return { kind: "now" };
+  const minutes = live ? liveCountdownMinutes(view, now) : null;
+  if (minutes != null) return { kind: "countdown", minutes };
+  if (view.eta) return { kind: "eta", at: view.eta };
+  if (view.till) return { kind: "by", at: view.till };
+  return { kind: "none" };
 }

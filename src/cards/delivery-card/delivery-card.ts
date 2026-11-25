@@ -11,7 +11,8 @@ import { formatTime, formatRelativeDay, formatCountdown, formatDistance, formatM
 import {
   computeDeliveryState,
   findReservedUntil,
-  liveCountdownMinutes,
+  arrivingHeadline,
+  type ArrivingHeadline,
   type DeliveryPhase,
   type DeliverySlotKey,
   type DeliverySlotView,
@@ -313,9 +314,9 @@ export class RohlikDeliveryCard extends RohlikBaseCard<DeliveryCardConfig> {
     `;
   }
 
-  /** Countdown minutes for the headline, honouring `show_countdown`. */
-  private countdown(view: DeliveryView): number | null {
-    return this.config.show_countdown === false ? null : liveCountdownMinutes(view, new Date());
+  /** The arriving headline; `compact` and `show_countdown: false` keep the clock time. */
+  private arriving(view: DeliveryView, compact = false): ArrivingHeadline {
+    return arrivingHeadline(view, new Date(), !compact && this.config.show_countdown !== false);
   }
 
   /** The courier is close: the card frame takes the accent (amber at the door). */
@@ -328,11 +329,18 @@ export class RohlikDeliveryCard extends RohlikBaseCard<DeliveryCardConfig> {
   private headlineMain(view: DeliveryView, compact = false): string {
     switch (view.state) {
       case "arriving": {
-        if (view.tracking.phase === "at_door") return this.t("now");
-        // Compact mode has no caption to carry the clock time, so it keeps it.
-        const minutes = compact ? null : this.countdown(view);
-        if (minutes != null) return formatMinutes(this.hass, minutes);
-        return view.eta ? formatTime(this.hass, view.eta) : view.till ? formatTime(this.hass, view.till) : "—";
+        const head = this.arriving(view, compact);
+        switch (head.kind) {
+          case "now":
+            return this.t("now");
+          case "countdown":
+            return formatMinutes(this.hass, head.minutes);
+          case "eta":
+          case "by":
+            return formatTime(this.hass, head.at);
+          default:
+            return "—";
+        }
       }
       case "ordered":
         return view.since
@@ -351,8 +359,10 @@ export class RohlikDeliveryCard extends RohlikBaseCard<DeliveryCardConfig> {
   private headlineCaption(view: DeliveryView): string {
     switch (view.state) {
       case "arriving": {
-        if (!view.eta) return this.t("by");
-        const counting = this.countdown(view) != null;
+        const head = this.arriving(view);
+        if (head.kind === "now" || head.kind === "none") return "";
+        if (head.kind === "by" || !view.eta) return this.t("by");
+        const counting = head.kind === "countdown";
         // With the countdown as the headline, the clock time moves here.
         const parts = [counting ? this.t("estimated_at", { time: formatTime(this.hass, view.eta) }) : this.t("estimated")];
         const source = view.tracking.etaSource;

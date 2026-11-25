@@ -259,4 +259,13 @@ describe("recordDeliveredAt", () => {
     expect(pinnedDeliveredAt(storage, DEVICE, 7)).toEqual(DELIVERED);
     expect(pinnedDeliveredAt(storage, DEVICE, 8)).toBeNull();
   });
+
+  it("ages the delivered window from the tracked moment, not from a late flip", () => {
+    const storage = makeStorage();
+    rememberActiveOrder(storage, DEVICE, { orderId: 7, till: TILL }, DELIVERED);
+    recordDeliveredAt(storage, DEVICE, 7, DELIVERED);
+    // This browser only notices is_ordered off three hours later.
+    const memory = resolveDelivery(storage, DEVICE, new Date("2026-09-13T18:42:00Z"));
+    expect(memory?.endedAt).toEqual(DELIVERED);
+  });
 });

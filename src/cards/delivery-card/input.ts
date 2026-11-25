@@ -152,8 +152,21 @@ export function readDeliveryInput(read: EntityReader, device: string): DeliveryS
     typeof trackingOrderId === "string" || typeof trackingOrderId === "number" ? trackingOrderId : null;
   const pinned =
     trackingStatus === "delivered" ? pinnedDeliveredAt(getBrowserStorage(), device, trackedOrderId) : null;
-  const statusSince =
-    pinned && changedAt ? (pinned < changedAt ? pinned : changedAt) : (pinned ?? changedAt);
+  // Once the integration drops the delivered status (~30 min) the order can
+  // still be listed as upcoming for a while; the pinned delivery moment then
+  // keeps it "delivered" instead of flipping back to "arriving".
+  const listedId = orderData?.id;
+  const pinnedListed =
+    !trackingStatus && listedId != null && read("is_ordered")?.state === "on"
+      ? pinnedDeliveredAt(getBrowserStorage(), device, listedId)
+      : null;
+  const statusSince = pinnedListed
+    ? pinnedListed
+    : pinned && changedAt
+      ? pinned < changedAt
+        ? pinned
+        : changedAt
+      : (pinned ?? changedAt);
 
   return {
     isOrdered: read("is_ordered")?.state === "on",
@@ -179,11 +192,11 @@ export function readDeliveryInput(read: EntityReader, device: string): DeliveryS
       price: (attr(`${key}_slot`, "Price") as number | undefined) ?? null,
     })),
     tracking: {
-      status: trackingStatus,
+      status: pinnedListed ? "delivered" : trackingStatus,
       // `last_changed` of the status is when the courier reached it — for
       // `delivered`, the delivery moment (the pinned one survives restarts).
       statusSince,
-      orderId: trackedOrderId,
+      orderId: pinnedListed ? (listedId ?? null) : trackedOrderId,
       stopsBefore: num(read("stops_before")),
       distanceM: distanceInMetres(read("courier_distance")),
       minutesLeft: num(read("delivery_time_remaining")),
