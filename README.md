@@ -9,7 +9,7 @@ Custom Lovelace cards and a badge for the
 next delivery status, your shopping cart, delivery slots, account details and
 spending analytics, all rendered natively with your dashboard theme.
 
-![Rohlík.cz cards overview](docs/images/overview.png?v=0.1.1-tracking)
+![Rohlík.cz cards overview](docs/images/overview.png?v=0.2.0-beta)
 
 ## Installation
 
@@ -58,7 +58,7 @@ Next Delivery card), already set to that account.
 
 ### Next Delivery — `rohlik-delivery-card`
 
-<img src="docs/images/delivery-card.png?v=0.1.1-tracking" alt="Next Delivery card while the courier is on the way" width="480">
+<img src="docs/images/delivery-card.png?v=0.2.0-beta" alt="Next Delivery card while the courier is on the way" width="480">
 
 One card, four states. **Ordered**: the delivery window with a countdown. **On the
 way**: the live ETA as the headline, a progress track across the window, the courier's
@@ -66,12 +66,12 @@ announcement and the order summary. **Delivered**: the last order and an "order 
 link. **No order**: the nearest available slot, reserved-slot and express chips, and up to
 three upcoming slots with prices.
 
-<img src="docs/images/delivery-card-ordered.png?v=0.1.1-tracking" alt="Next Delivery card, ordered state" width="360"> <img src="docs/images/delivery-card-none.png?v=0.1.1-tracking" alt="Next Delivery card, no order state" width="360">
+<img src="docs/images/delivery-card-ordered.png?v=0.2.0-beta" alt="Next Delivery card, ordered state" width="360"> <img src="docs/images/delivery-card-none.png?v=0.2.0-beta" alt="Next Delivery card, no order state" width="360">
 
 A matching **badge**, `rohlik-delivery-badge`, shows the same state in one line at the
 top of a view:
 
-<img src="docs/images/delivery-badge.png?v=0.1.1-tracking" alt="Delivery badge" width="240">
+<img src="docs/images/delivery-badge.png?v=0.2.0-beta" alt="Delivery badge" width="240">
 
 Options: `show_announcement`, `show_order_summary`, `show_express_chip`, `show_refresh`,
 `show_slots`, `show_shop_link`, `show_tracking`, `show_countdown`, `compact`, `tap_action`. Full reference in
@@ -79,7 +79,7 @@ Options: `show_announcement`, `show_order_summary`, `show_express_chip`, `show_r
 
 ### Shopping Cart — `rohlik-cart-card`
 
-<img src="docs/images/cart-card.png?v=0.1.1-tracking" alt="Shopping Cart card" width="480">
+<img src="docs/images/cart-card.png?v=0.2.0-beta" alt="Shopping Cart card" width="480">
 
 Your live cart as product rows with a quantity stepper and remove button, the total and
 item count, and an inline search box: results float over the page, `+` or Enter adds a
@@ -95,7 +95,7 @@ Options: `show_search`, `group_by_category`, `show_brand`, `max_items`, `list_ma
 
 ### Delivery Slots — `rohlik-slots-card`
 
-<img src="docs/images/slots-card.png?v=0.1.1-tracking" alt="Delivery Slots card" width="720">
+<img src="docs/images/slots-card.png?v=0.2.0-beta" alt="Delivery Slots card" width="720">
 
 The nearest Express, Standard and Eco slots with time, window, price and a capacity bar
 that turns amber and red as a slot fills. The eye button switches on **watch mode**,
@@ -108,7 +108,7 @@ Options: `slots`, `layout` (`auto`, `row`, `column`), `show_price`, `show_locati
 
 ### Account — `rohlik-account-card`
 
-<img src="docs/images/account-card.png?v=0.1.1-tracking" alt="Account card" width="480">
+<img src="docs/images/account-card.png?v=0.2.0-beta" alt="Account card" width="480">
 
 Xtra membership with days remaining, credit, reusable bags and deposit, remaining
 no-limit and free-express orders (hidden when you are not a member), Parents Club, the
@@ -119,7 +119,7 @@ Options: `stats` (which tiles, in which order), `show_footer`. Reference:
 
 ### Spending — `rohlik-spending-card`
 
-<img src="docs/images/spending-card.png?v=0.1.1-tracking" alt="Spending card, this year" width="720">
+<img src="docs/images/spending-card.png?v=0.2.0-beta" alt="Spending card, this year" width="720">
 
 Month, year and all-time totals with order counts and the average order value, a
 by-year chart, and a breakdown by category level or by product from the integration's
@@ -127,7 +127,7 @@ opt-in **Spending Analytics** sensors (tap a row for units and price per unit). 
 **This month** period swaps the chart for the last twelve months, read from Home
 Assistant's long-term statistics of the monthly-spent sensor.
 
-<img src="docs/images/spending-card-month.png?v=0.1.1-tracking" alt="Spending card, this month with the monthly chart" width="720">
+<img src="docs/images/spending-card-month.png?v=0.2.0-beta" alt="Spending card, this month with the monthly chart" width="720">
 
 Options: `default_period` (`month`, `year`, `all`), `default_level`, `top_n`, `chart`
 (`auto`, `years`, `months`, `none`), `show_totals`. Reference:
