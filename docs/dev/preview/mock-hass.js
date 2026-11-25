@@ -439,13 +439,30 @@ export function buildHass({ lang = "cs", state = "arriving" } = {}) {
 
   const since = state === "arriving" ? "2026-09-13T17:00:00+02:00" : state === "ordered" ? "2026-09-14T08:00:00+02:00" : "unknown";
   const till = state === "arriving" ? "2026-09-13T19:00:00+02:00" : state === "ordered" ? "2026-09-14T10:00:00+02:00" : "unknown";
-  const eta = state === "arriving" ? "2026-09-13T17:42:00+02:00" : "unknown";
+  const eta = state === "arriving" ? "2026-09-13T17:58:00+02:00" : "unknown";
   add("sensor", "next_order_since", since, {});
   add("sensor", "next_order_till", till, {});
   add("sensor", "delivery_time", eta, {});
 
+  // ---- sensor/binary_sensor: live tracking (HA-RohlikCZ 1.3+) ----
+  const trackedOrder = state === "arriving" ? "24681012" : state === "ordered" ? "24681099" : null;
+  add(
+    "sensor",
+    "delivery_status",
+    state === "arriving" ? "on_the_way" : state === "ordered" ? "in_queue" : "unknown",
+    { order_id: trackedOrder, updated: "2026-09-13T17:41:00+02:00" },
+  );
+  add("sensor", "stops_before", state === "arriving" ? 2 : "unknown", {});
+  add("sensor", "courier_distance", state === "arriving" ? 1.42 : "unknown", { unit_of_measurement: "km" });
+  add("sensor", "delivery_time_remaining", state === "arriving" ? 16 : "unknown", {
+    unit_of_measurement: "min",
+    source: state === "arriving" ? "tracking" : "slot",
+  });
+  add("binary_sensor", "last_mile", "off", { lead_minutes: 5, order_id: trackedOrder });
+  add("binary_sensor", "courier_at_door", "off", { order_id: trackedOrder, latched: false });
+
   if (state === "arriving") {
-    add("sensor", "delivery_info", "Kurýr je 3 zastávky od vás", {
+    add("sensor", "delivery_info", "Kurýr je 2 zastávky od vás", {
       "Order Id": "24681012",
       "Updated At": "2026-09-13T17:39:00+02:00",
       Title: "Doručení",
@@ -483,7 +500,12 @@ export function buildHass({ lang = "cs", state = "arriving" } = {}) {
   }
 
   // ---- sensor: cart ----
-  add("sensor", "cart_price", CART_TOTAL, { "Total items": CART_ITEMS.length, "Can Order": false });
+  add("sensor", "cart_price", CART_TOTAL, {
+    "Total items": CART_ITEMS.length,
+    "Can Order": false,
+    "Minimum Order Price": 500,
+    unit_of_measurement: lang === "cs" ? "Kč" : "CZK",
+  });
 
   // ---- sensor: account ----
   add("sensor", "credit_amount", 312, {});
@@ -581,7 +603,7 @@ export function buildHass({ lang = "cs", state = "arriving" } = {}) {
         return {
           items: CART_ITEMS.map((item, i) => ({
             uid: `cart-item-${i + 1}`,
-            summary: `${item.name} (${item.qty}) - ${item.price} Kč`,
+            summary: `${item.name} (${item.qty}) - ${item.price} CZK`,
             status: "needs_action",
             description: `Category: ${item.category}\nBrand: ${item.brand}\nProduct ID: ${item.id}`,
           })),

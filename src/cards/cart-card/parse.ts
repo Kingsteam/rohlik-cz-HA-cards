@@ -3,6 +3,8 @@
  * separate so they're trivial to unit test (see `test/cart-parse.test.ts`).
  */
 
+import { currencyFromUnit } from "../../core/shop";
+
 /** Shape of one `todo/item/list` websocket item, as emitted by HA-RohlikCZ. */
 export interface TodoItemInput {
   uid: string;
@@ -21,17 +23,21 @@ export interface CartLine {
   category?: string;
   brand?: string;
   productId?: number;
+  /** ISO currency of `price`, when the summary names one. */
+  currency?: string;
 }
 
-// Matches "<name> (<qty>) - <price> Kč". The name portion is captured greedily
-// so that, when the name itself contains parenthesised text (e.g. a pack
-// size), the regex backtracks to the *last* "(<int>)" before " - <price> Kč" —
-// which is always the real quantity marker HA-RohlikCZ appends.
-const SUMMARY_RE = /^(.+)\s*\((\d+)\)\s*-\s*(\d+(?:[.,]\d+)?)\s*Kč\s*$/;
+// Matches "<name> (<qty>) - <price> <currency>". HA-RohlikCZ < 1.1 always
+// printed "Kč"; 1.1+ prints the product's ISO code ("CZK", "EUR", "HUF",
+// "RON"). The name portion is captured greedily so that, when the name
+// itself contains parenthesised text (e.g. a pack size), the regex
+// backtracks to the *last* "(<int>)" before " - <price>" — which is always
+// the real quantity marker HA-RohlikCZ appends.
+const SUMMARY_RE = /^(.+)\s*\((\d+)\)\s*-\s*(\d+(?:[.,]\d+)?)\s*(Kč|[A-Z]{3}|€|Ft|lei)?\s*$/;
 
 /**
  * Parses a single `todo` item into a `CartLine`, or `null` when `summary`
- * doesn't match the expected `"<name> (<qty>) - <price> Kč"` shape.
+ * doesn't match the expected `"<name> (<qty>) - <price> <currency>"` shape.
  */
 export function parseTodoItem(item: TodoItemInput): CartLine | null {
   if (!item || typeof item.summary !== "string") return null;
@@ -39,13 +45,15 @@ export function parseTodoItem(item: TodoItemInput): CartLine | null {
   const match = SUMMARY_RE.exec(item.summary.trim());
   if (!match) return null;
 
-  const [, rawName, rawQty, rawPrice] = match;
+  const [, rawName, rawQty, rawPrice, rawCurrency] = match;
   const name = rawName.trim();
   const quantity = parseInt(rawQty, 10);
   const price = parseFloat(rawPrice.replace(",", "."));
   if (!name || !Number.isFinite(quantity) || !Number.isFinite(price)) return null;
 
   const line: CartLine = { uid: item.uid, name, quantity, price };
+  const currency = currencyFromUnit(rawCurrency);
+  if (currency) line.currency = currency;
   const { category, brand, productId } = parseDescription(item.description);
   if (category !== undefined) line.category = category;
   if (brand !== undefined) line.brand = brand;
@@ -130,13 +138,13 @@ export interface CategoryGroup {
   lines: CartLine[];
 }
 
-/** Default Rohlík.cz checkout URL, used when `checkout_url` isn't configured. */
+/** Default Rohlík.cz checkout URL, used when neither `checkout_url` nor a shop cart URL is given. */
 export const DEFAULT_CHECKOUT_URL = "https://www.rohlik.cz/kosik";
 
-/** Resolves the checkout URL: a configured, non-blank URL, or the default. */
-export function resolveCheckoutUrl(checkoutUrl?: string): string {
+/** Resolves the checkout URL: a configured, non-blank URL, else the shop's cart page. */
+export function resolveCheckoutUrl(checkoutUrl?: string, shopCartUrl: string = DEFAULT_CHECKOUT_URL): string {
   const trimmed = checkoutUrl?.trim();
-  return trimmed ? trimmed : DEFAULT_CHECKOUT_URL;
+  return trimmed ? trimmed : shopCartUrl;
 }
 
 /**

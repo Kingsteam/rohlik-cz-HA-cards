@@ -18,7 +18,7 @@ export const sharedStyles = css`
     display: flex;
     flex-direction: column;
     height: 100%;
-    padding: 16px;
+    padding: var(--ha-space-4, 16px);
     box-sizing: border-box;
     /* Deliberately NOT a scroll container. On touch, a scrollable card eats
        the swipe before the dashboard view gets it, so the page stops
@@ -28,11 +28,11 @@ export const sharedStyles = css`
   .header {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 1.1rem;
-    font-weight: 500;
+    gap: var(--ha-space-2, 8px);
+    font-size: var(--ha-font-size-l, 16px);
+    font-weight: var(--ha-font-weight-medium, 500);
     color: var(--primary-text-color);
-    margin-bottom: 8px;
+    margin-bottom: var(--ha-space-2, 8px);
   }
 
   .header ha-icon,
@@ -54,10 +54,10 @@ export const sharedStyles = css`
     align-items: center;
     gap: 4px;
     padding: 2px 10px;
-    border-radius: 12px;
-    font-size: 0.8rem;
-    font-weight: 500;
-    line-height: 1.6;
+    border-radius: var(--ha-border-radius-pill, 9999px);
+    font-size: var(--ha-font-size-s, 12px);
+    font-weight: var(--ha-font-weight-medium, 500);
+    line-height: var(--ha-line-height-normal, 1.6);
     white-space: nowrap;
   }
 
@@ -82,10 +82,10 @@ export const sharedStyles = css`
   }
 
   .big {
-    font-size: 2rem;
+    font-size: var(--ha-font-size-3xl, 28px);
     font-weight: 600;
     color: var(--primary-text-color);
-    line-height: 1.2;
+    line-height: var(--ha-line-height-condensed, 1.2);
   }
 
   .row {
@@ -106,12 +106,14 @@ export const sharedStyles = css`
     justify-content: center;
     gap: 4px;
     padding: 6px 14px;
-    border-radius: var(--ha-card-border-radius, 12px);
+    /* HA's own buttons are pills. */
+    border-radius: var(--ha-border-radius-pill, 9999px);
     border: none;
     background: var(--rohlik-accent);
     color: var(--text-primary-color, #fff);
-    font-size: 0.85rem;
-    font-weight: 500;
+    font-family: inherit;
+    font-size: var(--ha-font-size-m, 14px);
+    font-weight: var(--ha-font-weight-medium, 500);
     cursor: pointer;
   }
 
@@ -131,7 +133,7 @@ export const sharedStyles = css`
     margin-top: auto;
     padding-top: 8px;
     color: var(--secondary-text-color);
-    font-size: 0.75rem;
+    font-size: var(--ha-font-size-s, 12px);
   }
 
   .footer.stale {
@@ -143,9 +145,9 @@ export const sharedStyles = css`
     align-items: center;
     gap: 8px;
     padding: 8px 12px;
-    border-radius: 8px;
+    border-radius: var(--ha-border-radius-md, 8px);
     color: var(--error-color, #db4437);
     background: color-mix(in srgb, var(--error-color, #db4437) 12%, transparent);
-    font-size: 0.85rem;
+    font-size: var(--ha-font-size-m, 14px);
   }
 `;

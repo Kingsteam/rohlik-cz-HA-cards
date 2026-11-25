@@ -10,6 +10,27 @@ import {
 } from "../src/cards/cart-card/parse";
 
 describe("parseTodoItem", () => {
+  it("parses the ISO currency HA-RohlikCZ 1.1+ prints", () => {
+    expect(parseTodoItem({ uid: "a", summary: "Mléko (2) - 39.8 CZK" })).toEqual({
+      uid: "a",
+      name: "Mléko",
+      quantity: 2,
+      price: 39.8,
+      currency: "CZK",
+    });
+    expect(parseTodoItem({ uid: "b", summary: "Milch (1) - 1.29 EUR" })?.currency).toBe("EUR");
+    expect(parseTodoItem({ uid: "c", summary: "Tej (3) - 899.0 HUF" })?.price).toBe(899);
+  });
+
+  it("parses a summary with no currency at all", () => {
+    expect(parseTodoItem({ uid: "d", summary: "Chleba (1) - 45.0" })).toEqual({
+      uid: "d",
+      name: "Chleba",
+      quantity: 1,
+      price: 45,
+    });
+  });
+
   it("parses a normal summary + full description", () => {
     const line = parseTodoItem({
       uid: "item-1",
@@ -24,6 +45,7 @@ describe("parseTodoItem", () => {
       category: "Mléčné výrobky",
       brand: "Rohlík",
       productId: 12345,
+      currency: "CZK",
     });
   });
 
@@ -54,7 +76,7 @@ describe("parseTodoItem", () => {
 
   it("tolerates a missing description entirely", () => {
     const line = parseTodoItem({ uid: "item-5", summary: "Jogurt (4) - 15.6 Kč" });
-    expect(line).toEqual({ uid: "item-5", name: "Jogurt", quantity: 4, price: 15.6 });
+    expect(line).toEqual({ uid: "item-5", name: "Jogurt", quantity: 4, price: 15.6, currency: "CZK" });
   });
 
   it("tolerates a description with only some lines present", () => {
@@ -202,5 +224,12 @@ describe("moveHighlight", () => {
   it("returns -1 for an empty list regardless of direction", () => {
     expect(moveHighlight(-1, 1, 0)).toBe(-1);
     expect(moveHighlight(0, -1, 0)).toBe(-1);
+  });
+});
+
+describe("resolveCheckoutUrl with a shop", () => {
+  it("falls back to the shop's cart page", () => {
+    expect(resolveCheckoutUrl(undefined, "https://www.knuspr.de")).toBe("https://www.knuspr.de");
+    expect(resolveCheckoutUrl(" https://x.test/cart ", "https://www.knuspr.de")).toBe("https://x.test/cart");
   });
 });

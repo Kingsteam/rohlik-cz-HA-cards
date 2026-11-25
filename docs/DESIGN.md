@@ -41,7 +41,26 @@ Decisions already taken (do not re-open):
    amber when older than 20 minutes.
 7. No dependency on `custom-card-helpers`. Local minimal types live in `src/core/types.ts`.
 
-## Entity contract (from HA-RohlikCZ 1.0.0-beta2)
+## Entity contract (from HA-RohlikCZ 1.0.0-beta2, updated for 1.3.0)
+
+### Changes in HA-RohlikCZ 1.1–1.3 the cards rely on
+
+- **Multiple shops** (1.1): Rohlík.cz, Knuspr.de, Gurkerl.at, Kifli.hu, Sezamo.ro. The device
+  `manufacturer` is the shop name (rohlik-api `Site.name`); `core/shop.ts` maps it to the shop's
+  URL, cart URL and currency. Money sensors (`cart_price`, `credit_amount`, `*_spent`) carry the
+  ISO currency as `unit_of_measurement` (`Kč` on Czech-language installs); the cards format money
+  in that currency (`RohlikBaseCard.money()`).
+- **Cart todo summary** now ends in the product's ISO currency (`… (2) - 39.8 CZK`), not `Kč`.
+- **`cart_price`** gains `Minimum Order Price` (the shop's minimum order value); the cart card uses
+  it when `min_order` is not set.
+- **Live delivery tracking** (1.3): `delivery_status` (enum `in_queue`, `on_the_way`, `arrived`,
+  `handing_over`, `delivered`; attrs `order_id`, `updated`), `stops_before` (int, 0 = you are next),
+  `courier_distance` (distance, native m, shown in km by default — convert with the state's unit),
+  `delivery_time_remaining` (minutes; attr `source`: `tracking` / `announcement` / `slot` /
+  `last_known`), binary sensors `courier_at_door` and `last_mile`, and a disabled-by-default
+  `device_tracker` `courier`. `delivery_time` now prefers the tracked ETA. The delivery card and
+  badge read these through `cards/delivery-card/input.ts`; all of them are optional, so older
+  integration versions and shops without tracking render as before.
 
 Entities are found by `translation_key` (column 1). Device name = the Rohlík account holder's
 name, so entity IDs look like `sensor.dan_vejsada_cart_total` — never rely on them.
@@ -88,7 +107,7 @@ Attribute names with spaces and capitals are exactly as the integration emits th
 `shopping_cart` — entity id `todo.<device>_rohlik_shopping_cart`. Items via websocket
 `{ type: "todo/item/list", entity_id }` → `{ items: [{ uid, summary, status, description }] }`.
 
-- `summary` = `"<name> (<quantity>) - <price> Kč"` (price is the line price, `float` printed by Python, e.g. `39.8`).
+- `summary` = `"<name> (<quantity>) - <price> <currency>"` (price is the line price, `float` printed by Python, e.g. `39.8`; currency is the ISO code since 1.1, `Kč` before).
 - `uid` = `cart_item_id` (string).
 - `description` = `"Category: <category>\nBrand: <brand>\nProduct ID: <id>"`.
 - Create (`todo/item/add` or `todo.add_item` service, `item: "<qty> <name>"`) searches and adds the first match.

@@ -41,6 +41,24 @@ export function formatMoney(hass: HomeAssistant, amount: number, currency = "CZK
   }
 }
 
+/**
+ * "350 m" / "1.4 km" — or miles/feet when the HA unit system is imperial.
+ * Takes metres (see `cards/delivery-card/input.ts#distanceInMetres`).
+ */
+export function formatDistance(hass: HomeAssistant, metres: number): string {
+  const locale = lang(hass);
+  const imperial = hass.config?.unit_system?.length === "mi";
+  const fmt = (value: number, unit: string, digits: number): string =>
+    new Intl.NumberFormat(locale, { style: "unit", unit, maximumFractionDigits: digits }).format(value);
+  // Round before choosing the unit, so 997 m reads "1 km", not "1,000 m".
+  if (imperial) {
+    const feet = Math.round(metres / 0.3048 / 10) * 10;
+    return feet < 1000 ? fmt(feet, "foot", 0) : fmt(metres / 1609.344, "mile", 1);
+  }
+  const rounded = Math.round(metres / 10) * 10;
+  return rounded < 1000 ? fmt(rounded, "meter", 0) : fmt(metres / 1000, "kilometer", 1);
+}
+
 export function formatTime(hass: HomeAssistant, date: Date): string {
   return new Intl.DateTimeFormat(lang(hass), {
     hour: "2-digit",
@@ -151,6 +169,24 @@ export function formatCountdown(hass: HomeAssistant, date: Date): string {
 
   const days = Math.round(totalMinutes / 60 / 24);
   return wrap(prefix, unitShort(locale, days, "days"), suffix);
+}
+
+/**
+ * A whole number of minutes as "12 min" / "1 hr 20 min" (en; cs "1 h 20 min"), or with the
+ * locale's future affixes ("in 12 min" / "za 12 min") when `relative`.
+ */
+export function formatMinutes(hass: HomeAssistant, minutes: number, relative = false): string {
+  const locale = lang(hass);
+  const total = Math.max(0, Math.round(minutes));
+  const hours = Math.floor(total / 60);
+  const rest = total % 60;
+  let body: string;
+  if (hours === 0) body = unitShort(locale, rest, "minutes");
+  else if (rest === 0) body = unitShort(locale, hours, "hours");
+  else body = `${unitShort(locale, hours, "hours")} ${unitShort(locale, rest, "minutes")}`;
+  if (!relative) return body;
+  const [prefix, suffix] = affixesFor(locale, "future");
+  return wrap(prefix, body, suffix);
 }
 
 /**

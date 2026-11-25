@@ -33,6 +33,12 @@ interface StoredMemory {
   seenAt: string | null;
   /** `null` while the order is still active (not yet resolved into a "delivered" memory). */
   endedAt: string | null;
+  /**
+   * The delivery moment reported by live tracking (HA-RohlikCZ 1.3+), when
+   * seen. Kept apart from `till` because `rememberActiveOrder` rewrites
+   * `till` on every render; only ever moves earlier (see `recordDeliveredAt`).
+   */
+  deliveredAt: string | null;
 }
 
 /**
@@ -65,6 +71,7 @@ function readStored(storage: StorageLike, device: string): StoredMemory | null {
       till: typeof parsed.till === "string" ? parsed.till : null,
       seenAt: typeof parsed.seenAt === "string" ? parsed.seenAt : null,
       endedAt: typeof parsed.endedAt === "string" ? parsed.endedAt : null,
+      deliveredAt: typeof parsed.deliveredAt === "string" ? parsed.deliveredAt : null,
     };
   } catch {
     return null;
@@ -82,9 +89,16 @@ function writeStored(storage: StorageLike, device: string, record: StoredMemory)
 
 function toMemory(stored: StoredMemory): RecentDeliveryMemory | null {
   if (!stored.endedAt) return null;
-  const endedAt = new Date(stored.endedAt);
+  let endedAt = new Date(stored.endedAt);
   if (Number.isNaN(endedAt.getTime())) return null;
-  const till = stored.till ? new Date(stored.till) : null;
+  // The "delivered" window ages from the later of `till` and `endedAt`. With
+  // a tracked delivery moment, age from that moment, not from when this
+  // browser happened to notice `is_ordered` flip off.
+  const delivered = stored.deliveredAt ? new Date(stored.deliveredAt) : null;
+  if (delivered && !Number.isNaN(delivered.getTime()) && delivered < endedAt) endedAt = delivered;
+  // A tracked delivery moment beats the booked window end.
+  const tillIso = stored.deliveredAt ?? stored.till;
+  const till = tillIso ? new Date(tillIso) : null;
   return { orderId: stored.orderId, till: till && !Number.isNaN(till.getTime()) ? till : null, endedAt };
 }
 
@@ -101,11 +115,15 @@ export function rememberActiveOrder(
   order: { orderId: string | number | null; till: Date | null },
   now: Date = new Date(),
 ): void {
+  const previous = readStored(storage, device);
+  const sameOrder =
+    previous != null && order.orderId != null && String(previous.orderId) === String(order.orderId);
   writeStored(storage, device, {
     orderId: order.orderId,
     till: order.till ? order.till.toISOString() : null,
     seenAt: now.toISOString(),
     endedAt: null,
+    deliveredAt: sameOrder ? previous.deliveredAt : null,
   });
 }
 
@@ -182,4 +200,55 @@ export function getBrowserStorage(): StorageLike {
     // fall through to the no-op stub below
   }
   return { getItem: () => null, setItem: () => {}, removeItem: () => {} };
+}
+
+/**
+ * Remembers the moment live tracking reported `delivered` (HA-RohlikCZ
+ * 1.3+). The integration keeps that status for only about 30 minutes; the
+ * memory keeps "Delivered" (at the right time) for the usual 6 hours.
+ *
+ * - Same order (or ids unknown): pins `deliveredAt`, only ever moving it
+ *   earlier — `last_changed` is re-stamped when HA restarts or the
+ *   integration reloads, which must not push the time later.
+ * - Another order still active: left alone, it is the one that matters.
+ * - Nothing stored, or a finished older order: writes a resolved record, so
+ *   a browser that never saw the order active still shows "Delivered".
+ */
+export function recordDeliveredAt(
+  storage: StorageLike,
+  device: string,
+  orderId: string | number | null,
+  at: Date,
+): void {
+  const stored = readStored(storage, device);
+  const iso = at.toISOString();
+  const sameOrder =
+    stored != null &&
+    (orderId == null || stored.orderId == null || String(stored.orderId) === String(orderId));
+
+  if (stored && sameOrder) {
+    const current = stored.deliveredAt ? new Date(stored.deliveredAt) : null;
+    if (current && !Number.isNaN(current.getTime()) && current.getTime() <= at.getTime()) return;
+    writeStored(storage, device, { ...stored, deliveredAt: iso });
+    return;
+  }
+  if (stored && !stored.endedAt) return;
+  writeStored(storage, device, { orderId, till: iso, seenAt: iso, endedAt: iso, deliveredAt: iso });
+}
+
+/**
+ * The pinned tracked delivery moment for `orderId` (see `recordDeliveredAt`),
+ * or null. Lets the card prefer it over a `last_changed` that an HA restart
+ * re-stamped while the `delivered` status is still live.
+ */
+export function pinnedDeliveredAt(
+  storage: StorageLike,
+  device: string,
+  orderId: string | number | null,
+): Date | null {
+  const stored = readStored(storage, device);
+  if (!stored?.deliveredAt) return null;
+  if (orderId != null && stored.orderId != null && String(stored.orderId) !== String(orderId)) return null;
+  const at = new Date(stored.deliveredAt);
+  return Number.isNaN(at.getTime()) ? null : at;
 }

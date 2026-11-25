@@ -5,9 +5,8 @@ import { classMap } from "lit/directives/class-map.js";
 import { styleMap } from "lit/directives/style-map.js";
 import { RohlikBaseCard, type RohlikCardConfig } from "../../core/base-card";
 import type { HomeAssistant, LovelaceGridOptions } from "../../core/types";
-import { registerCard } from "../../core/register";
+import { registerCard, suggestForKeys } from "../../core/register";
 import { getConfigEntryId, callRohlik } from "../../core/actions";
-import { formatMoney } from "../../core/format";
 import { sharedStyles } from "../../core/styles";
 import { cartStyles } from "./styles";
 import { strings } from "./strings";
@@ -30,7 +29,7 @@ export interface CartCardConfig extends RohlikCardConfig {
   max_items?: number;
   /** Max height of the item list in px before it scrolls; 0 = unlimited. */
   list_max_height?: number;
-  /** Minimum order value in CZK used for the "below minimum" hint; 0 = do not judge. */
+  /** Minimum order value (account currency) for the "below minimum" hint; 0 = do not judge, unset = the shop's minimum. */
   min_order?: number;
   show_order_button?: boolean;
   checkout_url?: string;
@@ -521,7 +520,10 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
     // once slot, address and payment are all set at checkout — it says
     // nothing about the minimum order value. Judge the minimum ourselves.
     const readyToSubmit = Boolean(this.attr("cart_price", "Can Order"));
-    const minOrder = this.config.min_order ?? 0;
+    // An explicit `min_order` wins (0 = do not judge); otherwise use the
+    // shop's own minimum, which HA-RohlikCZ 1.3+ reports on `cart_price`.
+    const shopMinimum = Number(this.attr("cart_price", "Minimum Order Price"));
+    const minOrder = this.config.min_order ?? (Number.isFinite(shopMinimum) ? shopMinimum : 0);
     const noLimitLeft = Number(this.state("no_limit")?.state) > 0;
     const belowMinimum = minOrder > 0 && !noLimitLeft && total < minOrder;
     const totalItemsAttr = this.attr("cart_price", "Total items");
@@ -552,14 +554,14 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
                   : nothing}
         </div>
 
-        <div class="big">${formatMoney(this.hass, Number.isFinite(total) ? total : 0)}</div>
+        <div class="big">${this.money(Number.isFinite(total) ? total : 0)}</div>
         <div class="caption">
           ${isEmpty ? this.t("empty_cart") : this.t("items_count", { count: totalItems })}
         </div>
         ${isEmpty ? this.renderEmptyHint() : nothing}
         ${belowMinimum && !isEmpty
           ? html`<div class="hint minimum-hint">
-              ${this.t("below_minimum_by", { amount: formatMoney(this.hass, minOrder - total) })}
+              ${this.t("below_minimum_by", { amount: this.money(minOrder - total) })}
             </div>`
           : nothing}
         ${this.error ? html`<div class="error">${this.error}</div>` : nothing}
@@ -587,7 +589,7 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
   }
 
   private renderOrderButton(enabled: boolean): TemplateResult {
-    const url = resolveCheckoutUrl(this.config.checkout_url);
+    const url = resolveCheckoutUrl(this.config.checkout_url, this.shop.cartUrl);
     return html`
       <a
         class=${classMap({ btn: true, order: true, disabled: !enabled })}
@@ -595,7 +597,7 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
         target="_blank"
         rel="noopener noreferrer"
         aria-disabled=${enabled ? nothing : "true"}
-        title=${enabled ? this.t("order_hint") : this.t("empty_cart")}
+        title=${enabled ? this.t(url === this.shop.url ? "order_hint_shop" : "order_hint", { shop: this.shop.name }) : this.t("empty_cart")}
       >
         <ha-icon icon="mdi:cart-arrow-right"></ha-icon>
         ${this.t("order")}
@@ -675,8 +677,9 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
   }
 
   private renderSpinner(): TemplateResult {
-    if (customElements.get("ha-circular-progress")) {
-      return html`<ha-circular-progress indeterminate size="small"></ha-circular-progress>`;
+    // `ha-circular-progress` was removed in HA 2025.4; `ha-spinner` replaced it.
+    if (customElements.get("ha-spinner")) {
+      return html`<ha-spinner size="tiny" aria-hidden="true"></ha-spinner>`;
     }
     return html`<div class="spinner"></div>`;
   }
@@ -779,7 +782,7 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
               +
             </button>
           </div>
-          <div class="line-price">${formatMoney(this.hass, line.price)}</div>
+          <div class="line-price">${this.money(line.price, line.currency)}</div>
           <button
             class="icon-btn remove"
             ?disabled=${pending}
@@ -796,6 +799,10 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
 
 registerCard({
   type: "rohlik-cart-card",
+  documentationURL: "https://github.com/dvejsada/rohlik-cz-HA-cards/blob/main/docs/cards/cart-card.md",
+  getEntitySuggestion: suggestForKeys("rohlik-cart-card", [
+    "shopping_cart", "cart_price",
+  ]),
   name: "Rohlík.cz Shopping Cart",
   description: "Live cart contents, quantity steppers and product search for Rohlík.cz.",
 });

@@ -5,8 +5,8 @@ import { styleMap } from "lit/directives/style-map.js";
 import { repeat } from "lit/directives/repeat.js";
 import { RohlikBaseCard, type RohlikCardConfig } from "../../core/base-card";
 import type { HomeAssistant, LovelaceGridOptions } from "../../core/types";
-import { formatMoney, lang } from "../../core/format";
-import { registerCard } from "../../core/register";
+import { lang } from "../../core/format";
+import { registerCard, suggestForKeys } from "../../core/register";
 import { sharedStyles } from "../../core/styles";
 import {
   LEVELS,
@@ -267,20 +267,20 @@ export class RohlikSpendingCard extends RohlikBaseCard<SpendingCardConfig> {
       <div class="totals">
         <div class="totals-cell">
           <div class="totals-value">
-            ${Number.isFinite(monthlyValue) ? formatMoney(this.hass, monthlyValue) : "–"}
+            ${Number.isFinite(monthlyValue) ? this.money(monthlyValue) : "–"}
           </div>
           <div class="totals-caption">${monthCaption}</div>
         </div>
         <div class="totals-cell">
           <div class="totals-value">
-            ${Number.isFinite(yearlyValue) ? formatMoney(this.hass, yearlyValue) : "–"}
+            ${Number.isFinite(yearlyValue) ? this.money(yearlyValue) : "–"}
           </div>
           <div class="totals-caption">${yearCaption}</div>
         </div>
         <div class="totals-cell">
           <div class="totals-value">
             ${avgValue !== undefined && Number.isFinite(avgValue)
-              ? formatMoney(this.hass, avgValue)
+              ? this.money(avgValue)
               : "–"}
           </div>
           <div class="totals-caption">${avgCaption}</div>
@@ -359,7 +359,7 @@ export class RohlikSpendingCard extends RohlikBaseCard<SpendingCardConfig> {
             // creates them in the HTML namespace and nothing is drawn.
             return svg`
               <rect x=${x} y=${y0} width=${CHART_BAR_W} height=${barHeight} rx="4" fill=${fill}>
-                <title>${formatMoney(this.hass, b.total)}</title>
+                <title>${this.money(b.total)}</title>
               </rect>
               <text
                 x=${x + CHART_BAR_W / 2}
@@ -457,14 +457,14 @@ export class RohlikSpendingCard extends RohlikBaseCard<SpendingCardConfig> {
               style=${styleMap({ width: `${widthPct}%` })}
             ></span>
           </span>
-          <span class="breakdown-spent">${formatMoney(this.hass, entry.spent)}</span>
+          <span class="breakdown-spent">${this.money(entry.spent)}</span>
         </div>
         ${isExpanded
           ? html`
               <div class="breakdown-expand">
                 ${this.t("expand_row", {
                   units: entry.units,
-                  avg: formatMoney(this.hass, entry.avgUnitPrice),
+                  avg: this.money(entry.avgUnitPrice),
                 })}
               </div>
             `
@@ -486,6 +486,13 @@ export class RohlikSpendingCard extends RohlikBaseCard<SpendingCardConfig> {
 
 registerCard({
   type: "rohlik-spending-card",
+  documentationURL: "https://github.com/dvejsada/rohlik-cz-HA-cards/blob/main/docs/cards/spending-card.md",
+  getEntitySuggestion: suggestForKeys("rohlik-spending-card", [
+    "monthly_spent", "yearly_spent", "alltime_spent", "categories_l0_this_year",
+    "categories_l0_all_time", "categories_this_year", "categories_all_time",
+    "categories_l2_this_year", "categories_l2_all_time", "categories_l3_this_year",
+    "categories_l3_all_time", "items_this_year", "items_all_time",
+  ]),
   name: "Rohlík.cz Spending",
   description: "Monthly, yearly and all-time spending totals with a category breakdown.",
 });

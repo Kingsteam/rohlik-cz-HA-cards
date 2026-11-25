@@ -4,11 +4,11 @@ import { styleMap } from "lit/directives/style-map.js";
 import type { HassEntity, HomeAssistant, LovelaceCardConfig } from "../../core/types";
 import { findRohlikDevices, resolveEntities } from "../../core/discovery";
 import { openMoreInfo } from "../../core/actions";
-import { formatRelativeDay, formatTime, parseTs } from "../../core/format";
+import { formatMinutes, formatRelativeDay, formatTime } from "../../core/format";
 import { coreStrings, localize, withLanguage, type CardLanguage } from "../../core/localize";
 import { registerBadge } from "../../core/register";
-import { computeDeliveryState, type DeliveryOrderData, type DeliveryStateInput, type DeliveryView } from "../../cards/delivery-card/state";
-import { clearMemory, getBrowserStorage, loadRecentDelivery, rememberActiveOrder, resolveDelivery, type RecentDeliveryMemory } from "../../cards/delivery-card/memory";
+import { arrivingHeadline, computeDeliveryState, type DeliveryStateInput, type DeliveryView } from "../../cards/delivery-card/state";
+import { readDeliveryInput } from "../../cards/delivery-card/input";
 import { strings } from "./strings";
 import "./editor";
 
@@ -41,10 +41,14 @@ export class RohlikDeliveryBadge extends LitElement {
       display: flex;
       align-items: center;
       gap: 8px;
-      height: 36px;
+      height: var(--ha-badge-size, 36px);
+      min-width: var(--ha-badge-size, 36px);
       padding: 0 12px 0 6px;
       box-sizing: border-box;
-      border-radius: var(--ha-card-border-radius, 12px);
+      border-radius: var(--ha-badge-border-radius, calc(var(--ha-badge-size, 36px) / 2));
+      border: var(--ha-card-border-width, 1px) solid var(--ha-card-border-color, var(--divider-color));
+      box-shadow: var(--ha-card-box-shadow, none);
+      backdrop-filter: var(--ha-card-backdrop-filter, none);
       background: var(--ha-card-background, var(--card-background-color));
       cursor: pointer;
       max-width: 100%;
@@ -61,14 +65,14 @@ export class RohlikDeliveryBadge extends LitElement {
       justify-content: center;
       width: 24px;
       height: 24px;
-      border-radius: 50%;
+      border-radius: var(--ha-border-radius-circle, 50%);
       flex-shrink: 0;
       background: color-mix(in srgb, var(--rohlik-icon-color, var(--rohlik-accent)) 15%, transparent);
     }
 
     ha-icon {
       color: var(--rohlik-icon-color, var(--rohlik-accent));
-      --mdc-icon-size: 16px;
+      --mdc-icon-size: var(--ha-badge-icon-size, 18px);
     }
 
     .text {
@@ -82,7 +86,7 @@ export class RohlikDeliveryBadge extends LitElement {
 
     .label {
       color: var(--secondary-text-color);
-      font-size: 0.65rem;
+      font-size: var(--ha-font-size-xs, 10px);
       text-transform: uppercase;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -91,8 +95,8 @@ export class RohlikDeliveryBadge extends LitElement {
 
     .value {
       color: var(--primary-text-color);
-      font-size: 0.8rem;
-      font-weight: 500;
+      font-size: var(--ha-badge-font-size, var(--ha-font-size-s, 12px));
+      font-weight: var(--ha-font-weight-medium, 500);
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -151,6 +155,23 @@ export class RohlikDeliveryBadge extends LitElement {
     }
   }
 
+  private tickTimer: ReturnType<typeof setInterval> | undefined;
+
+  public connectedCallback(): void {
+    super.connectedCallback();
+    // The countdown and "ordered in N" values move on their own; re-render
+    // like the card does, so they don't freeze between HA updates.
+    this.tickTimer = setInterval(() => this.requestUpdate(), 30_000);
+  }
+
+  public disconnectedCallback(): void {
+    super.disconnectedCallback();
+    if (this.tickTimer !== undefined) {
+      clearInterval(this.tickTimer);
+      this.tickTimer = undefined;
+    }
+  }
+
   public static getConfigElement(): HTMLElement {
     return document.createElement("rohlik-delivery-badge-editor");
   }
@@ -169,22 +190,14 @@ export class RohlikDeliveryBadge extends LitElement {
     return entityId ? this.hass?.states?.[entityId] : undefined;
   }
 
-  private attr(key: string, name: string): unknown {
-    return this.entityState(key)?.attributes?.[name];
-  }
-
-  private isOn(key: string): boolean {
-    return this.entityState(key)?.state === "on";
-  }
-
-  private textState(key: string): string | null {
-    const value = this.entityState(key)?.state;
-    if (!value || value === "unknown" || value === "unavailable") return null;
-    return value;
-  }
-
   private t(key: string, vars?: Record<string, string | number>): string {
-    return localize(this.hass, { ...coreStrings, ...strings }, key, vars);
+    // Merge per language: a shallow spread would drop coreStrings' cs/en
+    // entries ("today", "tomorrow", …) under the card dictionary's.
+    const merged: Record<string, Record<string, string>> = {};
+    for (const lng of new Set([...Object.keys(coreStrings), ...Object.keys(strings)])) {
+      merged[lng] = { ...coreStrings[lng], ...strings[lng] };
+    }
+    return localize(this.hass, merged, key, vars);
   }
 
   private deviceName(): string {
@@ -193,54 +206,8 @@ export class RohlikDeliveryBadge extends LitElement {
     return device?.name_by_user || device?.name || "Rohlík.cz";
   }
 
-  /** Same "watch `is_ordered` flip off" memory the card keeps — see `cards/delivery-card/memory.ts`. */
-  private syncMemory(orderData: DeliveryOrderData | null): RecentDeliveryMemory | null {
-    const device = this.config?.device;
-    if (!device) return null;
-    const storage = getBrowserStorage();
-
-    // While the sensor is unknown/unavailable (HA startup, integration
-    // reloading) nothing can be concluded: read the memory, never resolve it.
-    const orderedState = this.entityState("is_ordered")?.state;
-    if (orderedState !== "on" && orderedState !== "off") {
-      return loadRecentDelivery(storage, device);
-    }
-
-    if (this.isOn("is_ordered")) {
-      const orderId = orderData?.id ?? null;
-      const previous = loadRecentDelivery(storage, device);
-      if (previous && orderId != null && previous.orderId !== orderId) {
-        clearMemory(storage, device);
-      }
-      rememberActiveOrder(storage, device, {
-        orderId,
-        till: parseTs(this.entityState("next_order_till")?.state),
-      });
-      return null;
-    }
-
-    return resolveDelivery(storage, device, new Date());
-  }
-
   private buildInput(): DeliveryStateInput {
-    const orderData = (this.attr("is_ordered", "order_data") as DeliveryOrderData | undefined) ?? null;
-    return {
-      isOrdered: this.isOn("is_ordered"),
-      since: parseTs(this.entityState("next_order_since")?.state),
-      till: parseTs(this.entityState("next_order_till")?.state),
-      eta: parseTs(this.entityState("delivery_time")?.state),
-      orderData,
-      announcementText: this.textState("delivery_info"),
-      announcementExtra: (this.attr("delivery_info", "Additional Content") as string | undefined) ?? null,
-      announcementUpdatedAt: parseTs(this.attr("delivery_info", "Updated At") as string | undefined),
-      lastOrderAt: parseTs(this.entityState("last_order")?.state),
-      lastOrderItems: (this.attr("last_order", "Items") as number | undefined) ?? null,
-      lastOrderPrice: (this.attr("last_order", "Price") as number | undefined) ?? null,
-      firstDeliveryText: this.textState("first_delivery"),
-      isReserved: this.isOn("is_reserved"),
-      isExpressAvailable: this.isOn("is_express_available"),
-      recentDelivery: this.syncMemory(orderData),
-    };
+    return readDeliveryInput((key) => this.entityState(key), this.config.device);
   }
 
   private onClick = (): void => {
@@ -258,14 +225,16 @@ export class RohlikDeliveryBadge extends LitElement {
     if (!this.config || !this.hass || !this.entityId("is_ordered")) return nothing;
 
     const view = computeDeliveryState(this.buildInput(), new Date());
-    const warn = view.state === "none" && view.isExpressAvailable;
+    const phase = view.state === "delivered" ? null : view.tracking.phase;
+    const warn = (view.state === "none" && view.isExpressAvailable) || phase === "at_door";
     const hostStyle = {
       ...(this.config.accent ? { "--rohlik-accent": this.config.accent } : {}),
       ...(warn ? { "--rohlik-icon-color": "var(--warning-color)" } : {}),
     };
-    const label = this.config.show_name
-      ? `${this.deviceName()} · ${this.t(`chip_${view.state}`)}`
-      : this.t(`chip_${view.state}`);
+    const stateLabel = phase ? this.t(`phase_${phase}`) : this.t(`chip_${view.state}`);
+    const label = this.config.show_name ? `${this.deviceName()} · ${stateLabel}` : stateLabel;
+    const icon =
+      view.state === "delivered" ? "mdi:check" : phase === "at_door" ? "mdi:door-open" : "mdi:truck-delivery";
 
     return html`
       <div
@@ -277,7 +246,7 @@ export class RohlikDeliveryBadge extends LitElement {
         tabindex="0"
       >
         <div class="icon-circle">
-          <ha-icon icon=${view.state === "delivered" ? "mdi:check" : "mdi:truck-delivery"}></ha-icon>
+          <ha-icon icon=${icon}></ha-icon>
         </div>
         <div class="text">
           <span class="label">${label}</span>
@@ -289,16 +258,29 @@ export class RohlikDeliveryBadge extends LitElement {
 
   private value(view: DeliveryView): string {
     switch (view.state) {
-      case "arriving":
-        return view.eta
-          ? formatTime(this.hass, view.eta)
-          : view.till
-            ? formatTime(this.hass, view.till)
-            : "—";
+      case "arriving": {
+        const { stopsBefore } = view.tracking;
+        const head = arrivingHeadline(view, new Date());
+        if (head.kind === "now") return this.t("now");
+        const time =
+          head.kind === "countdown"
+            ? formatMinutes(this.hass, head.minutes, true)
+            : head.kind === "eta"
+              ? formatTime(this.hass, head.at)
+              : head.kind === "by"
+                ? // Without an estimate, the window end is a deadline, not an ETA.
+                  `${this.t("by")} ${formatTime(this.hass, head.at)}`
+                : "—";
+        if (stopsBefore == null) return time;
+        const stops = stopsBefore === 0 ? this.t("you_are_next") : this.t("stops_short", { count: stopsBefore });
+        return `${time} · ${stops}`;
+      }
       case "ordered":
         return view.since
           ? formatRelativeDay(this.hass, view.since, { today: this.t("today"), tomorrow: this.t("tomorrow") })
-          : "—";
+          : view.tracking.phase
+            ? this.t(`phase_${view.tracking.phase}`)
+            : "—";
       case "delivered":
         return view.deliveredAt ? formatTime(this.hass, view.deliveredAt) : "—";
       case "none":
@@ -310,6 +292,7 @@ export class RohlikDeliveryBadge extends LitElement {
 
 registerBadge({
   type: "rohlik-delivery-badge",
+  documentationURL: "https://github.com/dvejsada/rohlik-cz-HA-cards/blob/main/docs/cards/delivery-card.md#badge--rohlik-delivery-badge",
   name: "Rohlík.cz Delivery Badge",
   description: "Compact status pill for your next Rohlík.cz delivery.",
   preview: true,

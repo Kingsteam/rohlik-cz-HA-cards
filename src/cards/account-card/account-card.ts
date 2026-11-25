@@ -4,10 +4,11 @@ import { classMap } from "lit/directives/class-map.js";
 import { styleMap } from "lit/directives/style-map.js";
 import { RohlikBaseCard, type RohlikCardConfig } from "../../core/base-card";
 import type { HomeAssistant, LovelaceGridOptions } from "../../core/types";
-import { registerCard } from "../../core/register";
+import { registerCard, suggestForKeys } from "../../core/register";
 import { sharedStyles } from "../../core/styles";
 import { getConfigEntryId, callRohlik } from "../../core/actions";
-import { formatMoney, parseTs } from "../../core/format";
+import { parseTs } from "../../core/format";
+import { currencyFromUnit } from "../../core/shop";
 import { accountCardStyles } from "./styles";
 import { strings } from "./strings";
 import "./editor";
@@ -89,7 +90,7 @@ export class RohlikAccountCard extends RohlikBaseCard<AccountCardConfig> {
         if (!this.entityId("credit_amount")) return null;
         const amount = numberOrNull(this.state("credit_amount")?.state);
         if (amount == null) return null;
-        return { icon: "mdi:cash-multiple", labelKey: "stat_credit", value: formatMoney(this.hass, amount) };
+        return { icon: "mdi:cash-multiple", labelKey: "stat_credit", value: this.money(amount) };
       }
       case "bags": {
         if (!this.entityId("bags_amount")) return null;
@@ -101,9 +102,9 @@ export class RohlikAccountCard extends RohlikBaseCard<AccountCardConfig> {
         const value = typeof max === "number" ? `${current} / ${max}` : String(current);
         let caption: string | undefined;
         if (typeof depositAmount === "number" && depositAmount > 0) {
-          const currency = typeof depositCurrency === "string" ? depositCurrency : "CZK";
+          const currency = currencyFromUnit(depositCurrency) ?? this.currency;
           caption = this.t("deposit_caption", {
-            amount: formatMoney(this.hass, depositAmount, currency),
+            amount: this.money(depositAmount, currency),
           });
         }
         return { icon: "mdi:shopping", labelKey: "stat_bags", value, caption };
@@ -246,13 +247,18 @@ export class RohlikAccountCard extends RohlikBaseCard<AccountCardConfig> {
     }).format(date);
     const parts = [`${this.t("last_order")} ${dateLabel}`];
     if (typeof items === "number") parts.push(this.t("items_count", { count: items }));
-    if (typeof price === "number") parts.push(formatMoney(this.hass, price));
+    if (typeof price === "number") parts.push(this.money(price));
     return html`<div class="last-order">${parts.join(" · ")}</div>`;
   }
 }
 
 registerCard({
   type: "rohlik-account-card",
+  documentationURL: "https://github.com/dvejsada/rohlik-cz-HA-cards/blob/main/docs/cards/account-card.md",
+  getEntitySuggestion: suggestForKeys("rohlik-account-card", [
+    "credit_amount", "bags_amount", "premium_days", "no_limit", "free_express", "is_premium",
+    "is_reusable", "is_parent", "account_id", "email", "phone", "updated",
+  ]),
   name: "Rohlík.cz Account",
   description: "Xtra membership status, credit, bags and account perks at a glance.",
   preview: true,
