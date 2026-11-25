@@ -201,6 +201,8 @@ function trackingMatches(input: DeliveryStateInput): boolean {
 const MOVING: ReadonlySet<TrackingStatus> = new Set(["on_the_way", "arrived", "handing_over"]);
 
 function phaseOf(tracking: TrackingInput): DeliveryPhase | null {
+  // `courier_at_door` stays latched until delivery, so it only counts
+  // together with tracking that matches the shown order (see callers).
   if (tracking.status === "delivered") return "delivered";
   if (tracking.courierAtDoor || tracking.status === "arrived" || tracking.status === "handing_over") {
     return "at_door";
@@ -217,11 +219,12 @@ function resolveState(input: DeliveryStateInput, now: Date): DeliveryStateKind {
     const at = tracking.statusSince ?? now;
     if (now.getTime() - at.getTime() <= DELIVERED_WINDOW_MS) return "delivered";
   }
+  // A courier that is already on the way (orders can arrive early, or the
+  // order can drop off the upcoming list mid-handover) beats both the clock
+  // and the "is_ordered went off" memory.
+  if (matches && tracking?.status && MOVING.has(tracking.status)) return "arriving";
+  if (matches && tracking?.courierAtDoor) return "arriving";
   if (input.isOrdered) {
-    // A courier that is already on the way (orders can arrive early) beats
-    // the clock; otherwise the booked window decides.
-    if (matches && tracking?.status && MOVING.has(tracking.status)) return "arriving";
-    if (tracking?.courierAtDoor) return "arriving";
     if (input.since && now.getTime() >= input.since.getTime()) return "arriving";
     return "ordered";
   }
@@ -274,7 +277,7 @@ export function computeDeliveryState(input: DeliveryStateInput, now: Date): Deli
     (input.recentDelivery ? (input.recentDelivery.till ?? input.recentDelivery.endedAt) : null);
 
   const tracking: TrackingView =
-    input.tracking && (matches || input.tracking.courierAtDoor) && state !== "none"
+    input.tracking && matches && state !== "none"
       ? {
           phase: phaseOf(input.tracking),
           stopsBefore: input.tracking.stopsBefore,

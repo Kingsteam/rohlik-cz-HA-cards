@@ -35,7 +35,7 @@ export class RohlikCartCardEditor extends RohlikBaseEditor<CartCardConfig> {
       { name: "show_brand", selector: { boolean: {} } },
       { name: "max_items", selector: { number: { min: 0, max: 50, mode: "box" } } },
       { name: "list_max_height", selector: { number: { min: 0, max: 2000, step: 10, mode: "box", unit_of_measurement: "px" } } },
-      { name: "min_order", selector: { number: { min: 0, max: 5000, step: 10, mode: "box" } } },
+      { name: "min_order", selector: { number: { min: 0, max: 1000000, step: 1, mode: "box" } } },
       { name: "show_order_button", selector: { boolean: {} } },
       { name: "checkout_url", selector: { text: {} } },
     ];

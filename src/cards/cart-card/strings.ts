@@ -24,6 +24,7 @@ export const strings: Dict = {
     order: "Objednat",
     below_minimum_order: "Pod minimální hodnotou objednávky",
     order_hint: "Otevře košík na {shop} v novém okně",
+    order_hint_shop: "Otevře {shop} v novém okně",
   },
   en: {
     title: "Shopping cart",
@@ -48,6 +49,7 @@ export const strings: Dict = {
     order: "Order",
     below_minimum_order: "Below minimum order",
     order_hint: "Opens the cart on {shop} in a new tab",
+    order_hint_shop: "Opens {shop} in a new tab",
   },
 };
 

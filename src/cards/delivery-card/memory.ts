@@ -183,3 +183,23 @@ export function getBrowserStorage(): StorageLike {
   }
   return { getItem: () => null, setItem: () => {}, removeItem: () => {} };
 }
+
+/**
+ * Pins the remembered delivery time to the moment live tracking reported
+ * `delivered` (HA-RohlikCZ 1.3+). The integration only keeps that status for
+ * about 30 minutes, after which the card would otherwise fall back to the
+ * slot end. Only touches a record for the same order (or one with no id).
+ */
+export function recordDeliveredAt(
+  storage: StorageLike,
+  device: string,
+  orderId: string | number | null,
+  at: Date,
+): void {
+  const stored = readStored(storage, device);
+  if (!stored) return;
+  if (orderId != null && stored.orderId != null && String(stored.orderId) !== String(orderId)) return;
+  const iso = at.toISOString();
+  if (stored.till === iso) return;
+  writeStored(storage, device, { ...stored, till: iso });
+}

@@ -50,11 +50,13 @@ export function formatDistance(hass: HomeAssistant, metres: number): string {
   const imperial = hass.config?.unit_system?.length === "mi";
   const fmt = (value: number, unit: string, digits: number): string =>
     new Intl.NumberFormat(locale, { style: "unit", unit, maximumFractionDigits: digits }).format(value);
+  // Round before choosing the unit, so 997 m reads "1 km", not "1,000 m".
   if (imperial) {
-    const feet = metres / 0.3048;
-    return feet < 1000 ? fmt(Math.round(feet / 10) * 10, "foot", 0) : fmt(metres / 1609.344, "mile", 1);
+    const feet = Math.round(metres / 0.3048 / 10) * 10;
+    return feet < 1000 ? fmt(feet, "foot", 0) : fmt(metres / 1609.344, "mile", 1);
   }
-  return metres < 1000 ? fmt(Math.round(metres / 10) * 10, "meter", 0) : fmt(metres / 1000, "kilometer", 1);
+  const rounded = Math.round(metres / 10) * 10;
+  return rounded < 1000 ? fmt(rounded, "meter", 0) : fmt(metres / 1000, "kilometer", 1);
 }
 
 export function formatTime(hass: HomeAssistant, date: Date): string {

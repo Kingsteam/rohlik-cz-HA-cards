@@ -597,7 +597,7 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
         target="_blank"
         rel="noopener noreferrer"
         aria-disabled=${enabled ? nothing : "true"}
-        title=${enabled ? this.t("order_hint", { shop: this.shop.name }) : this.t("empty_cart")}
+        title=${enabled ? this.t(url === this.shop.url ? "order_hint_shop" : "order_hint", { shop: this.shop.name }) : this.t("empty_cart")}
       >
         <ha-icon icon="mdi:cart-arrow-right"></ha-icon>
         ${this.t("order")}

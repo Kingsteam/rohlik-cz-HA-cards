@@ -456,6 +456,33 @@ describe("computeDeliveryState — live tracking (HA-RohlikCZ 1.3+)", () => {
     expect(view.tracking.phase).toBeNull();
   });
 
+  it("ignores a latched courier-at-door that belongs to another order", () => {
+    const view = computeDeliveryState(
+      baseInput({
+        isOrdered: true,
+        since: LATER,
+        orderData: { id: 8 },
+        tracking: tracking({ status: "arrived", orderId: 7, courierAtDoor: true }),
+      }),
+      NOW,
+    );
+    expect(view.state).toBe("ordered");
+    expect(view.tracking.phase).toBeNull();
+  });
+
+  it("keeps 'arriving' while handing over after the order left the upcoming list", () => {
+    const view = computeDeliveryState(
+      baseInput({
+        isOrdered: false,
+        recentDelivery: memory({ endedAt: NOW }),
+        tracking: tracking({ status: "handing_over", courierAtDoor: true }),
+      }),
+      NOW,
+    );
+    expect(view.state).toBe("arriving");
+    expect(view.tracking.phase).toBe("at_door");
+  });
+
   it("behaves as before without tracking", () => {
     const view = computeDeliveryState(baseInput({ isOrdered: true, since: LATER }), NOW);
     expect(view.state).toBe("ordered");

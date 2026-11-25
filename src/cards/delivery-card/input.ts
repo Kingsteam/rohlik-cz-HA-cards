@@ -17,6 +17,7 @@ import {
   clearMemory,
   getBrowserStorage,
   loadRecentDelivery,
+  recordDeliveredAt,
   rememberActiveOrder,
   resolveDelivery,
   type RecentDeliveryMemory,
@@ -33,6 +34,7 @@ const METRES_PER: Record<string, number> = {
   m: 1,
   km: 1000,
   mi: 1609.344,
+  nmi: 1852,
   yd: 0.9144,
   ft: 0.3048,
   in: 0.0254,
@@ -61,8 +63,8 @@ export function distanceInMetres(entity: HassEntity | undefined): number | null 
   const value = num(entity);
   if (value == null) return null;
   const unit = String(entity?.attributes?.unit_of_measurement ?? "m");
-  const factor = METRES_PER[unit] ?? 1;
-  return value * factor;
+  const factor = METRES_PER[unit];
+  return factor === undefined ? null : value * factor;
 }
 
 /**
@@ -75,7 +77,30 @@ function syncMemory(
   orderData: DeliveryOrderData | null,
 ): RecentDeliveryMemory | null {
   const storage = getBrowserStorage();
+  const memory = syncOrderMemory(storage, read, device, orderData);
 
+  // Tracking knows the real delivery moment; keep it once the status expires.
+  const status = read("delivery_status");
+  const deliveredAt = status?.state === "delivered" ? parseTs(status.last_changed) : null;
+  if (deliveredAt) {
+    const trackedId = status?.attributes?.order_id;
+    recordDeliveredAt(
+      storage,
+      device,
+      typeof trackedId === "string" || typeof trackedId === "number" ? trackedId : null,
+      deliveredAt,
+    );
+    return memory ? loadRecentDelivery(storage, device) : null;
+  }
+  return memory;
+}
+
+function syncOrderMemory(
+  storage: ReturnType<typeof getBrowserStorage>,
+  read: EntityReader,
+  device: string,
+  orderData: DeliveryOrderData | null,
+): RecentDeliveryMemory | null {
   // While the sensor is unknown/unavailable (HA startup, integration
   // reloading) nothing can be concluded: read the memory, never resolve it.
   const orderedState = read("is_ordered")?.state;

@@ -3,6 +3,7 @@ import {
   ACTIVE_STALE_MS,
   clearMemory,
   loadRecentDelivery,
+  recordDeliveredAt,
   rememberActiveOrder,
   resolveDelivery,
   type StorageLike,
@@ -196,5 +197,28 @@ describe("clearMemory", () => {
       },
     };
     expect(() => clearMemory(storage, DEVICE)).not.toThrow();
+  });
+});
+
+describe("recordDeliveredAt", () => {
+  const DEVICE = "dev1";
+  const TILL = new Date("2026-09-13T17:00:00Z");
+  const DELIVERED = new Date("2026-09-13T15:42:00Z");
+
+  it("pins the remembered time to the tracked delivery moment, and keeps it after resolving", () => {
+    const storage = makeStorage();
+    rememberActiveOrder(storage, DEVICE, { orderId: 7, till: TILL }, DELIVERED);
+    recordDeliveredAt(storage, DEVICE, 7, DELIVERED);
+    const memory = resolveDelivery(storage, DEVICE, new Date("2026-09-13T15:50:00Z"));
+    expect(memory?.till).toEqual(DELIVERED);
+    expect(loadRecentDelivery(storage, DEVICE)?.till).toEqual(DELIVERED);
+  });
+
+  it("leaves another order's record alone", () => {
+    const storage = makeStorage();
+    rememberActiveOrder(storage, DEVICE, { orderId: 8, till: TILL }, DELIVERED);
+    recordDeliveredAt(storage, DEVICE, 7, DELIVERED);
+    const memory = resolveDelivery(storage, DEVICE, new Date("2026-09-13T15:50:00Z"));
+    expect(memory?.till).toEqual(TILL);
   });
 });
