@@ -52,6 +52,10 @@ footer that turns amber when the integration stops refreshing.
 The renders below are produced by the bundled preview harness from the current
 build with sample data (`npm run screenshots`), so they always match the cards you get.
 
+On Home Assistant 2026.6 or newer, the cards are also suggested in the card picker when
+you add a card for a Rohlík entity (for example the Delivery Status sensor suggests the
+Next Delivery card), already set to that account.
+
 ### Next Delivery — `rohlik-delivery-card`
 
 <img src="docs/images/delivery-card.png?v=0.1.1-tracking" alt="Next Delivery card while the courier is on the way" width="480">
@@ -70,7 +74,7 @@ top of a view:
 <img src="docs/images/delivery-badge.png?v=0.1.1-tracking" alt="Delivery badge" width="240">
 
 Options: `show_announcement`, `show_order_summary`, `show_express_chip`, `show_refresh`,
-`show_slots`, `show_shop_link`, `show_tracking`, `compact`, `tap_action`. Full reference in
+`show_slots`, `show_shop_link`, `show_tracking`, `show_countdown`, `compact`, `tap_action`. Full reference in
 [docs/cards/delivery-card.md](docs/cards/delivery-card.md).
 
 ### Shopping Cart — `rohlik-cart-card`

@@ -4,7 +4,7 @@ import { classMap } from "lit/directives/class-map.js";
 import { styleMap } from "lit/directives/style-map.js";
 import { RohlikBaseCard, type RohlikCardConfig } from "../../core/base-card";
 import type { HomeAssistant, LovelaceGridOptions } from "../../core/types";
-import { registerCard } from "../../core/register";
+import { registerCard, suggestForKeys } from "../../core/register";
 import { sharedStyles } from "../../core/styles";
 import { getConfigEntryId, callRohlik } from "../../core/actions";
 import { formatRelativeDay, formatTime } from "../../core/format";
@@ -300,6 +300,11 @@ export class RohlikSlotsCard extends RohlikBaseCard<SlotsCardConfig> {
 
 registerCard({
   type: "rohlik-slots-card",
+  documentationURL: "https://github.com/dvejsada/rohlik-cz-HA-cards/blob/main/docs/cards/slots-card.md",
+  getEntitySuggestion: suggestForKeys("rohlik-slots-card", [
+    "express_slot", "standard_slot", "eco_slot", "first_delivery", "is_express_available",
+    "is_reserved",
+  ]),
   name: "Rohlík.cz Delivery Slots",
   description: "Express, standard and eco delivery slot times, prices and remaining capacity.",
   preview: true,

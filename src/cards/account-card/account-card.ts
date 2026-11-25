@@ -4,7 +4,7 @@ import { classMap } from "lit/directives/class-map.js";
 import { styleMap } from "lit/directives/style-map.js";
 import { RohlikBaseCard, type RohlikCardConfig } from "../../core/base-card";
 import type { HomeAssistant, LovelaceGridOptions } from "../../core/types";
-import { registerCard } from "../../core/register";
+import { registerCard, suggestForKeys } from "../../core/register";
 import { sharedStyles } from "../../core/styles";
 import { getConfigEntryId, callRohlik } from "../../core/actions";
 import { parseTs } from "../../core/format";
@@ -254,6 +254,11 @@ export class RohlikAccountCard extends RohlikBaseCard<AccountCardConfig> {
 
 registerCard({
   type: "rohlik-account-card",
+  documentationURL: "https://github.com/dvejsada/rohlik-cz-HA-cards/blob/main/docs/cards/account-card.md",
+  getEntitySuggestion: suggestForKeys("rohlik-account-card", [
+    "credit_amount", "bags_amount", "premium_days", "no_limit", "free_express", "is_premium",
+    "is_reusable", "is_parent", "account_id", "email", "phone", "updated",
+  ]),
   name: "Rohlík.cz Account",
   description: "Xtra membership status, credit, bags and account perks at a glance.",
   preview: true,

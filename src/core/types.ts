@@ -119,6 +119,14 @@ export interface CustomCardEntry {
   description?: string;
   preview?: boolean;
   documentationURL?: string;
+  /**
+   * HA 2026.6+: offered in the card picker for the entity being added.
+   * Return null when the card doesn't fit that entity.
+   */
+  getEntitySuggestion?: (
+    hass: HomeAssistant,
+    entityId: string,
+  ) => { label?: string; config: LovelaceCardConfig } | Array<{ label?: string; config: LovelaceCardConfig }> | null;
 }
 
 declare global {

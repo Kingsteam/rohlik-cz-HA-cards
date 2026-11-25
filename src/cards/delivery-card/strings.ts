@@ -15,6 +15,7 @@ export const strings: Dict = {
     chip_express: "Expres k dispozici",
     chip_reserved: "Rezervovaný termín",
     estimated: "odhad",
+    estimated_at: "odhad {time}",
     by: "do",
     delivered_caption: "doručeno",
     nearest_slot: "Nejbližší termín",
@@ -57,6 +58,7 @@ export const strings: Dict = {
     chip_express: "Express available",
     chip_reserved: "Slot reserved",
     estimated: "estimated",
+    estimated_at: "estimated {time}",
     by: "by",
     delivered_caption: "delivered",
     nearest_slot: "nearest slot",
@@ -103,6 +105,7 @@ export const labels: Dict = {
     show_slots: "Zobrazit termíny",
     show_shop_link: "Odkaz na obchod",
     show_tracking: "Zobrazit sledování kurýra",
+    show_countdown: "Odpočet minut v posledních 90 minutách",
     compact: "Kompaktní zobrazení",
   },
   en: {
@@ -115,6 +118,7 @@ export const labels: Dict = {
     show_slots: "Show upcoming slots",
     show_shop_link: "Show shop link",
     show_tracking: "Show courier tracking",
+    show_countdown: "Minutes countdown in the last 90 minutes",
     compact: "Compact layout",
   },
 };

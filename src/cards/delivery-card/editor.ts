@@ -12,6 +12,7 @@ export interface DeliveryCardConfig extends RohlikCardConfig {
   show_slots?: boolean;
   show_shop_link?: boolean;
   show_tracking?: boolean;
+  show_countdown?: boolean;
   compact?: boolean;
 }
 
@@ -30,6 +31,7 @@ export class RohlikDeliveryCardEditor extends RohlikBaseEditor<DeliveryCardConfi
     show_slots: true,
     show_shop_link: true,
     show_tracking: true,
+    show_countdown: true,
     compact: false,
   };
 
@@ -42,6 +44,7 @@ export class RohlikDeliveryCardEditor extends RohlikBaseEditor<DeliveryCardConfi
       { name: "show_slots", selector: { boolean: {} } },
       { name: "show_shop_link", selector: { boolean: {} } },
       { name: "show_tracking", selector: { boolean: {} } },
+      { name: "show_countdown", selector: { boolean: {} } },
       { name: "compact", selector: { boolean: {} } },
     ];
   }

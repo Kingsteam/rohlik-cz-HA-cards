@@ -5,7 +5,7 @@ import { classMap } from "lit/directives/class-map.js";
 import { styleMap } from "lit/directives/style-map.js";
 import { RohlikBaseCard, type RohlikCardConfig } from "../../core/base-card";
 import type { HomeAssistant, LovelaceGridOptions } from "../../core/types";
-import { registerCard } from "../../core/register";
+import { registerCard, suggestForKeys } from "../../core/register";
 import { getConfigEntryId, callRohlik } from "../../core/actions";
 import { sharedStyles } from "../../core/styles";
 import { cartStyles } from "./styles";
@@ -799,6 +799,10 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
 
 registerCard({
   type: "rohlik-cart-card",
+  documentationURL: "https://github.com/dvejsada/rohlik-cz-HA-cards/blob/main/docs/cards/cart-card.md",
+  getEntitySuggestion: suggestForKeys("rohlik-cart-card", [
+    "shopping_cart", "cart_price",
+  ]),
   name: "Rohlík.cz Shopping Cart",
   description: "Live cart contents, quantity steppers and product search for Rohlík.cz.",
 });

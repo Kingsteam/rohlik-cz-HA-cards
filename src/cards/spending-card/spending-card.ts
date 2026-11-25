@@ -6,7 +6,7 @@ import { repeat } from "lit/directives/repeat.js";
 import { RohlikBaseCard, type RohlikCardConfig } from "../../core/base-card";
 import type { HomeAssistant, LovelaceGridOptions } from "../../core/types";
 import { lang } from "../../core/format";
-import { registerCard } from "../../core/register";
+import { registerCard, suggestForKeys } from "../../core/register";
 import { sharedStyles } from "../../core/styles";
 import {
   LEVELS,
@@ -486,6 +486,13 @@ export class RohlikSpendingCard extends RohlikBaseCard<SpendingCardConfig> {
 
 registerCard({
   type: "rohlik-spending-card",
+  documentationURL: "https://github.com/dvejsada/rohlik-cz-HA-cards/blob/main/docs/cards/spending-card.md",
+  getEntitySuggestion: suggestForKeys("rohlik-spending-card", [
+    "monthly_spent", "yearly_spent", "alltime_spent", "categories_l0_this_year",
+    "categories_l0_all_time", "categories_this_year", "categories_all_time",
+    "categories_l2_this_year", "categories_l2_all_time", "categories_l3_this_year",
+    "categories_l3_all_time", "items_this_year", "items_all_time",
+  ]),
   name: "Rohlík.cz Spending",
   description: "Monthly, yearly and all-time spending totals with a category breakdown.",
 });

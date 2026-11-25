@@ -9,6 +9,26 @@ export const deliveryCardStyles = css`
     cursor: pointer;
   }
 
+  /* Courier close (last mile) / at the door: tint the card's own border,
+     which ha-card draws from these variables. */
+  ha-card.last-mile {
+    --ha-card-border-color: var(--rohlik-accent, var(--primary-color));
+    --ha-card-border-width: 2px;
+  }
+
+  ha-card.at-door {
+    --ha-card-border-color: var(--warning-color, #ff9800);
+    --ha-card-border-width: 2px;
+  }
+
+  ha-card.last-mile .headline .big {
+    color: var(--rohlik-accent, var(--primary-color));
+  }
+
+  ha-card.at-door .headline .big {
+    color: var(--warning-color, #ff9800);
+  }
+
   .header.static {
     cursor: default;
   }

@@ -344,3 +344,19 @@ export function findReservedUntil(attributes: Record<string, unknown> | null | u
   }
   return null;
 }
+
+/** The countdown headline takes over this close to the ETA (matches the integration's ticking window). */
+export const COUNTDOWN_WINDOW_MIN = 90;
+
+/**
+ * Minutes to show as a live countdown headline, or null to show the clock
+ * time instead. Only while arriving with a real estimate (not just the
+ * booked slot) and `delivery_time_remaining` within the ticking window —
+ * the integration counts it down every minute, so the card needs no timer.
+ */
+export function liveCountdownMinutes(view: DeliveryView): number | null {
+  const minutes = view.tracking.minutesLeft;
+  if (view.state !== "arriving" || !view.eta || minutes == null) return null;
+  if (minutes < 0 || minutes > COUNTDOWN_WINDOW_MIN) return null;
+  return minutes;
+}

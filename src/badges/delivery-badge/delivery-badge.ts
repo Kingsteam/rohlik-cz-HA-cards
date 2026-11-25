@@ -4,10 +4,10 @@ import { styleMap } from "lit/directives/style-map.js";
 import type { HassEntity, HomeAssistant, LovelaceCardConfig } from "../../core/types";
 import { findRohlikDevices, resolveEntities } from "../../core/discovery";
 import { openMoreInfo } from "../../core/actions";
-import { formatRelativeDay, formatTime } from "../../core/format";
+import { formatMinutes, formatRelativeDay, formatTime } from "../../core/format";
 import { coreStrings, localize, withLanguage, type CardLanguage } from "../../core/localize";
 import { registerBadge } from "../../core/register";
-import { computeDeliveryState, type DeliveryStateInput, type DeliveryView } from "../../cards/delivery-card/state";
+import { computeDeliveryState, liveCountdownMinutes, type DeliveryStateInput, type DeliveryView } from "../../cards/delivery-card/state";
 import { readDeliveryInput } from "../../cards/delivery-card/input";
 import { strings } from "./strings";
 import "./editor";
@@ -244,8 +244,13 @@ export class RohlikDeliveryBadge extends LitElement {
       case "arriving": {
         const { phase, stopsBefore } = view.tracking;
         if (phase === "at_door") return this.t("now");
+        const minutes = liveCountdownMinutes(view);
         // Without an estimate, the window end is a deadline, not an ETA.
-        const time = view.eta
+        const time = minutes != null
+          ? minutes === 0
+            ? this.t("now")
+            : formatMinutes(this.hass, minutes, true)
+          : view.eta
           ? formatTime(this.hass, view.eta)
           : view.till
             ? `${this.t("by")} ${formatTime(this.hass, view.till)}`
@@ -271,6 +276,7 @@ export class RohlikDeliveryBadge extends LitElement {
 
 registerBadge({
   type: "rohlik-delivery-badge",
+  documentationURL: "https://github.com/dvejsada/rohlik-cz-HA-cards/blob/main/docs/cards/delivery-card.md#badge--rohlik-delivery-badge",
   name: "Rohlík.cz Delivery Badge",
   description: "Compact status pill for your next Rohlík.cz delivery.",
   preview: true,

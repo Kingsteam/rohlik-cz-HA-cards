@@ -4,13 +4,14 @@ import { classMap } from "lit/directives/class-map.js";
 import { styleMap } from "lit/directives/style-map.js";
 import { RohlikBaseCard, type RohlikCardConfig } from "../../core/base-card";
 import type { HomeAssistant, LovelaceGridOptions } from "../../core/types";
-import { registerCard } from "../../core/register";
+import { registerCard, suggestForKeys } from "../../core/register";
 import { sharedStyles } from "../../core/styles";
 import { getConfigEntryId, callRohlik, openMoreInfo } from "../../core/actions";
-import { formatTime, formatRelativeDay, formatCountdown, formatDistance } from "../../core/format";
+import { formatTime, formatRelativeDay, formatCountdown, formatDistance, formatMinutes } from "../../core/format";
 import {
   computeDeliveryState,
   findReservedUntil,
+  liveCountdownMinutes,
   type DeliveryPhase,
   type DeliverySlotKey,
   type DeliverySlotView,
@@ -34,6 +35,8 @@ export interface DeliveryCardConfig extends RohlikCardConfig {
   show_shop_link?: boolean;
   /** Show live courier tracking (status steps, stops, distance) when available. */
   show_tracking?: boolean;
+  /** In the last 90 minutes, make the minutes left the headline (HA-RohlikCZ 1.3+). */
+  show_countdown?: boolean;
   compact?: boolean;
   tap_action?: string | { action?: string };
 }
@@ -169,7 +172,7 @@ export class RohlikDeliveryCard extends RohlikBaseCard<DeliveryCardConfig> {
     const view = this.getView();
 
     return html`
-      <ha-card style=${styleMap(this.accentStyle)}>
+      <ha-card class=${classMap(this.closeClass(view))} style=${styleMap(this.accentStyle)}>
         ${this.config.compact ? this.renderCompact(view) : this.renderFull(view)}
       </ha-card>
     `;
@@ -310,10 +313,25 @@ export class RohlikDeliveryCard extends RohlikBaseCard<DeliveryCardConfig> {
     `;
   }
 
+  /** Countdown minutes for the headline, honouring `show_countdown`. */
+  private countdown(view: DeliveryView): number | null {
+    return this.config.show_countdown === false ? null : liveCountdownMinutes(view);
+  }
+
+  /** The courier is close: the card frame takes the accent (amber at the door). */
+  private closeClass(view: DeliveryView): Record<string, boolean> {
+    const active = view.state === "arriving";
+    const atDoor = active && view.tracking.phase === "at_door";
+    return { "last-mile": active && view.tracking.lastMile && !atDoor, "at-door": atDoor };
+  }
+
   private headlineMain(view: DeliveryView): string {
     switch (view.state) {
-      case "arriving":
+      case "arriving": {
+        const minutes = this.countdown(view);
+        if (minutes != null) return minutes === 0 ? this.t("now") : formatMinutes(this.hass, minutes);
         return view.eta ? formatTime(this.hass, view.eta) : view.till ? formatTime(this.hass, view.till) : "—";
+      }
       case "ordered":
         return view.since
           ? formatRelativeDay(this.hass, view.since, { today: this.t("today"), tomorrow: this.t("tomorrow") })
@@ -332,12 +350,14 @@ export class RohlikDeliveryCard extends RohlikBaseCard<DeliveryCardConfig> {
     switch (view.state) {
       case "arriving": {
         if (!view.eta) return this.t("by");
-        const parts = [this.t("estimated")];
+        const counting = this.countdown(view) != null;
+        // With the countdown as the headline, the clock time moves here.
+        const parts = [counting ? this.t("estimated_at", { time: formatTime(this.hass, view.eta) }) : this.t("estimated")];
         const source = view.tracking.etaSource;
         // A `slot` source never gets here: input.ts drops that "ETA".
         if (source) parts.push(this.t(`source_${source}`));
         // The card re-renders every 30 s, so a seconds countdown would go stale.
-        if (view.eta.getTime() - Date.now() >= 60_000) parts.push(formatCountdown(this.hass, view.eta));
+        if (!counting && view.eta.getTime() - Date.now() >= 60_000) parts.push(formatCountdown(this.hass, view.eta));
         return parts.join(" · ");
       }
       case "ordered":
@@ -439,6 +459,12 @@ export class RohlikDeliveryCard extends RohlikBaseCard<DeliveryCardConfig> {
 
 registerCard({
   type: "rohlik-delivery-card",
+  documentationURL: "https://github.com/dvejsada/rohlik-cz-HA-cards/blob/main/docs/cards/delivery-card.md",
+  getEntitySuggestion: suggestForKeys("rohlik-delivery-card", [
+    "is_ordered", "delivery_time", "delivery_status", "delivery_time_remaining",
+    "stops_before", "courier_distance", "courier_at_door", "last_mile", "next_order_since",
+    "next_order_till", "delivery_info", "last_order", "delivery_calendar",
+  ]),
   name: "Rohlík.cz Next Delivery",
   description: "Shows the state of your next Rohlík.cz order: ordered, on its way, or delivered.",
   preview: true,

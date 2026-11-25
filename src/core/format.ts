@@ -172,6 +172,24 @@ export function formatCountdown(hass: HomeAssistant, date: Date): string {
 }
 
 /**
+ * A whole number of minutes as "12 min" / "1 h 20 min", or with the
+ * locale's future affixes ("in 12 min" / "za 12 min") when `relative`.
+ */
+export function formatMinutes(hass: HomeAssistant, minutes: number, relative = false): string {
+  const locale = lang(hass);
+  const total = Math.max(0, Math.round(minutes));
+  const hours = Math.floor(total / 60);
+  const rest = total % 60;
+  let body: string;
+  if (hours === 0) body = unitShort(locale, rest, "minutes");
+  else if (rest === 0) body = unitShort(locale, hours, "hours");
+  else body = `${unitShort(locale, hours, "hours")} ${unitShort(locale, rest, "minutes")}`;
+  if (!relative) return body;
+  const [prefix, suffix] = affixesFor(locale, "future");
+  return wrap(prefix, body, suffix);
+}
+
+/**
  * Compact "time since" a past date: "4 min ago" / "před 4 min".
  */
 export function formatAgo(hass: HomeAssistant, date: Date): string {
