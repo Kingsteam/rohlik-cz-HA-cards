@@ -3,6 +3,7 @@ import {
   ACTIVE_STALE_MS,
   clearMemory,
   loadRecentDelivery,
+  pinnedDeliveredAt,
   recordDeliveredAt,
   rememberActiveOrder,
   resolveDelivery,
@@ -250,5 +251,12 @@ describe("recordDeliveredAt", () => {
     recordDeliveredAt(storage, DEVICE, 6, new Date("2026-09-12T10:00:00Z"));
     recordDeliveredAt(storage, DEVICE, 7, DELIVERED);
     expect(loadRecentDelivery(storage, DEVICE)?.orderId).toBe(7);
+  });
+
+  it("exposes the pinned moment for the same order only", () => {
+    const storage = makeStorage();
+    recordDeliveredAt(storage, DEVICE, 7, DELIVERED);
+    expect(pinnedDeliveredAt(storage, DEVICE, 7)).toEqual(DELIVERED);
+    expect(pinnedDeliveredAt(storage, DEVICE, 8)).toBeNull();
   });
 });

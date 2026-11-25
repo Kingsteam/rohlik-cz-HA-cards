@@ -244,7 +244,12 @@ export class RohlikDeliveryBadge extends LitElement {
       case "arriving": {
         const { phase, stopsBefore } = view.tracking;
         if (phase === "at_door") return this.t("now");
-        const time = view.eta ? formatTime(this.hass, view.eta) : view.till ? formatTime(this.hass, view.till) : "—";
+        // Without an estimate, the window end is a deadline, not an ETA.
+        const time = view.eta
+          ? formatTime(this.hass, view.eta)
+          : view.till
+            ? `${this.t("by")} ${formatTime(this.hass, view.till)}`
+            : "—";
         if (stopsBefore == null) return time;
         const stops = stopsBefore === 0 ? this.t("you_are_next") : this.t("stops_short", { count: stopsBefore });
         return `${time} · ${stops}`;
@@ -252,7 +257,9 @@ export class RohlikDeliveryBadge extends LitElement {
       case "ordered":
         return view.since
           ? formatRelativeDay(this.hass, view.since, { today: this.t("today"), tomorrow: this.t("tomorrow") })
-          : "—";
+          : view.tracking.phase
+            ? this.t(`phase_${view.tracking.phase}`)
+            : "—";
       case "delivered":
         return view.deliveredAt ? formatTime(this.hass, view.deliveredAt) : "—";
       case "none":

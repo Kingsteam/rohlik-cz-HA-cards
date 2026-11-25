@@ -230,3 +230,20 @@ export function recordDeliveredAt(
   if (stored && !stored.endedAt) return;
   writeStored(storage, device, { orderId, till: iso, seenAt: iso, endedAt: iso, deliveredAt: iso });
 }
+
+/**
+ * The pinned tracked delivery moment for `orderId` (see `recordDeliveredAt`),
+ * or null. Lets the card prefer it over a `last_changed` that an HA restart
+ * re-stamped while the `delivered` status is still live.
+ */
+export function pinnedDeliveredAt(
+  storage: StorageLike,
+  device: string,
+  orderId: string | number | null,
+): Date | null {
+  const stored = readStored(storage, device);
+  if (!stored?.deliveredAt) return null;
+  if (orderId != null && stored.orderId != null && String(stored.orderId) !== String(orderId)) return null;
+  const at = new Date(stored.deliveredAt);
+  return Number.isNaN(at.getTime()) ? null : at;
+}

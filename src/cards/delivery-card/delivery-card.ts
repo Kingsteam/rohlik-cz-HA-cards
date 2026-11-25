@@ -317,7 +317,9 @@ export class RohlikDeliveryCard extends RohlikBaseCard<DeliveryCardConfig> {
       case "ordered":
         return view.since
           ? formatRelativeDay(this.hass, view.since, { today: this.t("today"), tomorrow: this.t("tomorrow") })
-          : "—";
+          : view.tracking.phase
+            ? this.t(`phase_${view.tracking.phase}`)
+            : "—";
       case "delivered":
         return view.deliveredAt ? formatTime(this.hass, view.deliveredAt) : "—";
       case "none":
@@ -332,7 +334,8 @@ export class RohlikDeliveryCard extends RohlikBaseCard<DeliveryCardConfig> {
         if (!view.eta) return this.t("by");
         const parts = [this.t("estimated")];
         const source = view.tracking.etaSource;
-        if (source && source !== "slot") parts.push(this.t(`source_${source}`));
+        // A `slot` source never gets here: input.ts drops that "ETA".
+        if (source) parts.push(this.t(`source_${source}`));
         // The card re-renders every 30 s, so a seconds countdown would go stale.
         if (view.eta.getTime() - Date.now() >= 60_000) parts.push(formatCountdown(this.hass, view.eta));
         return parts.join(" · ");

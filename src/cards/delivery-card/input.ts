@@ -17,6 +17,7 @@ import {
   clearMemory,
   getBrowserStorage,
   loadRecentDelivery,
+  pinnedDeliveredAt,
   recordDeliveredAt,
   rememberActiveOrder,
   resolveDelivery,
@@ -144,6 +145,16 @@ export function readDeliveryInput(read: EntityReader, device: string): DeliveryS
   const etaSource = ETA_SOURCES.includes(rawSource as EtaSource) ? (rawSource as EtaSource) : null;
   const trackingOrderId = attr("delivery_status", "order_id");
 
+  // Run first: it pins the tracked delivery moment that statusSince reads.
+  const recentDelivery = syncMemory(read, device, orderData);
+  const changedAt = trackingStatus ? parseTs(statusEntity?.last_changed) : null;
+  const trackedOrderId =
+    typeof trackingOrderId === "string" || typeof trackingOrderId === "number" ? trackingOrderId : null;
+  const pinned =
+    trackingStatus === "delivered" ? pinnedDeliveredAt(getBrowserStorage(), device, trackedOrderId) : null;
+  const statusSince =
+    pinned && changedAt ? (pinned < changedAt ? pinned : changedAt) : (pinned ?? changedAt);
+
   return {
     isOrdered: read("is_ordered")?.state === "on",
     since: parseTs(read("next_order_since")?.state),
@@ -161,7 +172,7 @@ export function readDeliveryInput(read: EntityReader, device: string): DeliveryS
     firstDeliveryText: known(read("first_delivery")),
     isReserved: read("is_reserved")?.state === "on",
     isExpressAvailable: read("is_express_available")?.state === "on",
-    recentDelivery: syncMemory(read, device, orderData),
+    recentDelivery,
     slots: SLOT_KEYS.map((key) => ({
       key,
       start: parseTs(read(`${key}_slot`)?.state),
@@ -170,12 +181,9 @@ export function readDeliveryInput(read: EntityReader, device: string): DeliveryS
     tracking: {
       status: trackingStatus,
       // `last_changed` of the status is when the courier reached it — for
-      // `delivered`, the actual delivery moment.
-      statusSince: trackingStatus ? parseTs(statusEntity?.last_changed) : null,
-      orderId:
-        typeof trackingOrderId === "string" || typeof trackingOrderId === "number"
-          ? trackingOrderId
-          : null,
+      // `delivered`, the delivery moment (the pinned one survives restarts).
+      statusSince,
+      orderId: trackedOrderId,
       stopsBefore: num(read("stops_before")),
       distanceM: distanceInMetres(read("courier_distance")),
       minutesLeft: num(read("delivery_time_remaining")),
