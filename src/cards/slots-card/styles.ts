@@ -22,7 +22,7 @@ export const slotsCardStyles = css`
     flex: 0 1 auto;
     min-width: 0;
     flex-wrap: wrap;
-    margin-left: auto;
+    margin-inline-start: auto;
   }
 
   /* Below ~420px the actions drop under the title instead of squeezing it. */
@@ -30,7 +30,7 @@ export const slotsCardStyles = css`
     .header-actions {
       flex-basis: 100%;
       justify-content: flex-end;
-      margin-left: 0;
+      margin-inline-start: 0;
     }
   }
 
@@ -61,7 +61,7 @@ export const slotsCardStyles = css`
   .pulse-dot {
     position: absolute;
     top: 4px;
-    right: 4px;
+    inset-inline-end: 4px;
     width: 6px;
     height: 6px;
     border-radius: 50%;

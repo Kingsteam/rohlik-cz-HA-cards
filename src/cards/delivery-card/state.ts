@@ -13,6 +13,60 @@ export type DeliveryStateKind = "arriving" | "ordered" | "delivered" | "none";
 
 export type DeliverySlotKey = "express" | "standard" | "eco";
 
+/** `delivery_status` sensor states (HA-RohlikCZ 1.3+), in lifecycle order. */
+export const TRACKING_STATUSES = ["in_queue", "on_the_way", "arrived", "handing_over", "delivered"] as const;
+export type TrackingStatus = (typeof TRACKING_STATUSES)[number];
+
+/** `delivery_time_remaining`'s `source` attribute: where the ETA comes from. */
+export type EtaSource = "tracking" | "announcement" | "slot" | "last_known";
+
+/**
+ * Finer-grained progress of an active order, for the status chip and the
+ * stepper. Null when the shop provides no live tracking.
+ */
+export type DeliveryPhase = "queued" | "on_the_way" | "at_door" | "delivered";
+
+/**
+ * Live delivery tracking (HA-RohlikCZ 1.3+: `delivery_status`,
+ * `stops_before`, `courier_distance`, `delivery_time_remaining`,
+ * `courier_at_door`, `last_mile`). Every field is null/false on older
+ * integration versions and on shops without tracking, and the card then
+ * behaves exactly as before.
+ */
+export interface TrackingInput {
+  status: TrackingStatus | null;
+  /** When `status` last changed (`last_changed` of the sensor). */
+  statusSince: Date | null;
+  /** `delivery_status`'s `order_id`: the order the tracking belongs to. */
+  orderId: string | number | null;
+  stopsBefore: number | null;
+  /** Straight-line courier distance, in metres. */
+  distanceM: number | null;
+  minutesLeft: number | null;
+  etaSource: EtaSource | null;
+  courierAtDoor: boolean;
+  lastMile: boolean;
+}
+
+/** Tracking facts that apply to the order the card shows. */
+export interface TrackingView {
+  phase: DeliveryPhase | null;
+  stopsBefore: number | null;
+  distanceM: number | null;
+  minutesLeft: number | null;
+  etaSource: EtaSource | null;
+  lastMile: boolean;
+}
+
+const EMPTY_TRACKING: TrackingView = {
+  phase: null,
+  stopsBefore: null,
+  distanceM: null,
+  minutesLeft: null,
+  etaSource: null,
+  lastMile: false,
+};
+
 /** Raw per-slot data for the `express_slot`/`standard_slot`/`eco_slot` sensors. */
 export interface DeliverySlotInput {
   key: DeliverySlotKey;
@@ -85,6 +139,8 @@ export interface DeliveryStateInput {
   recentDelivery?: RecentDeliveryMemory | null;
   /** `express_slot`/`standard_slot`/`eco_slot` raw readings, in the order they should render. */
   slots?: DeliverySlotInput[];
+  /** Live courier tracking, when the integration provides it. */
+  tracking?: TrackingInput | null;
 }
 
 export interface DeliveryView {
@@ -112,6 +168,8 @@ export interface DeliveryView {
   deliveredAt: Date | null;
   /** Slots with a known start time, in input order. Only meaningful in the "none" state; empty otherwise. */
   slots: DeliverySlotView[];
+  /** Live tracking for the shown order; all-null when there is none. */
+  tracking: TrackingView;
 }
 
 function pad2(n: number): string {
@@ -127,8 +185,43 @@ function clamp01(n: number): number {
   return Math.min(1, Math.max(0, n));
 }
 
+/**
+ * Whether the tracking belongs to the order the card shows. With several
+ * upcoming orders the integration can still report the previous order as
+ * `delivered` for a few minutes; ids settle it when both are known.
+ */
+function trackingMatches(input: DeliveryStateInput): boolean {
+  const tracking = input.tracking;
+  if (!tracking?.status) return false;
+  const orderId = input.orderData?.id;
+  if (!input.isOrdered || tracking.orderId == null || orderId == null) return true;
+  return String(tracking.orderId) === String(orderId);
+}
+
+const MOVING: ReadonlySet<TrackingStatus> = new Set(["on_the_way", "arrived", "handing_over"]);
+
+function phaseOf(tracking: TrackingInput): DeliveryPhase | null {
+  if (tracking.status === "delivered") return "delivered";
+  if (tracking.courierAtDoor || tracking.status === "arrived" || tracking.status === "handing_over") {
+    return "at_door";
+  }
+  if (tracking.status === "on_the_way") return "on_the_way";
+  if (tracking.status === "in_queue") return "queued";
+  return null;
+}
+
 function resolveState(input: DeliveryStateInput, now: Date): DeliveryStateKind {
+  const tracking = input.tracking;
+  const matches = trackingMatches(input);
+  if (matches && tracking?.status === "delivered") {
+    const at = tracking.statusSince ?? now;
+    if (now.getTime() - at.getTime() <= DELIVERED_WINDOW_MS) return "delivered";
+  }
   if (input.isOrdered) {
+    // A courier that is already on the way (orders can arrive early) beats
+    // the clock; otherwise the booked window decides.
+    if (matches && tracking?.status && MOVING.has(tracking.status)) return "arriving";
+    if (tracking?.courierAtDoor) return "arriving";
     if (input.since && now.getTime() >= input.since.getTime()) return "arriving";
     return "ordered";
   }
@@ -163,16 +256,36 @@ export function computeDeliveryState(input: DeliveryStateInput, now: Date): Deli
     );
   }
 
-  const summaryItems =
-    state === "delivered" ? (input.lastOrderItems ?? null) : (input.orderData?.itemsCount ?? null);
-  const summaryPrice =
-    state === "delivered"
-      ? (input.lastOrderPrice ?? null)
-      : (input.orderData?.priceComposition?.total?.amount ?? null);
+  // Tracking can call an order delivered while it is still listed as
+  // upcoming; its own data is then the best summary.
+  const fromLastOrder = state === "delivered" && !input.isOrdered;
+  const summaryItems = fromLastOrder
+    ? (input.lastOrderItems ?? null)
+    : (input.orderData?.itemsCount ?? null);
+  const summaryPrice = fromLastOrder
+    ? (input.lastOrderPrice ?? null)
+    : (input.orderData?.priceComposition?.total?.amount ?? null);
 
-  const deliveredAt = input.recentDelivery
-    ? (input.recentDelivery.till ?? input.recentDelivery.endedAt)
-    : null;
+  const matches = trackingMatches(input);
+  const trackedDelivery =
+    matches && input.tracking?.status === "delivered" ? input.tracking.statusSince : null;
+  const deliveredAt =
+    trackedDelivery ??
+    (input.recentDelivery ? (input.recentDelivery.till ?? input.recentDelivery.endedAt) : null);
+
+  const tracking: TrackingView =
+    input.tracking && (matches || input.tracking.courierAtDoor) && state !== "none"
+      ? {
+          phase: phaseOf(input.tracking),
+          stopsBefore: input.tracking.stopsBefore,
+          distanceM: input.tracking.distanceM,
+          minutesLeft: input.tracking.minutesLeft,
+          etaSource: input.tracking.etaSource,
+          lastMile: input.tracking.lastMile,
+        }
+      : input.tracking && state !== "none"
+        ? { ...EMPTY_TRACKING, minutesLeft: input.tracking.minutesLeft, etaSource: input.tracking.etaSource }
+        : EMPTY_TRACKING;
 
   // Only meaningful in the "none" state, but computing it unconditionally
   // keeps this function simple — the card only renders it there.
@@ -199,6 +312,7 @@ export function computeDeliveryState(input: DeliveryStateInput, now: Date): Deli
     isExpressAvailable: input.isExpressAvailable,
     deliveredAt,
     slots,
+    tracking,
   };
 }
 

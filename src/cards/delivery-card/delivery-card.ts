@@ -7,17 +7,17 @@ import type { HomeAssistant, LovelaceGridOptions } from "../../core/types";
 import { registerCard } from "../../core/register";
 import { sharedStyles } from "../../core/styles";
 import { getConfigEntryId, callRohlik, openMoreInfo } from "../../core/actions";
-import { formatTime, formatMoney, formatRelativeDay, formatCountdown, parseTs } from "../../core/format";
+import { formatTime, formatRelativeDay, formatCountdown, formatDistance } from "../../core/format";
 import {
   computeDeliveryState,
   findReservedUntil,
-  type DeliveryOrderData,
+  type DeliveryPhase,
   type DeliverySlotKey,
   type DeliverySlotView,
   type DeliveryStateInput,
   type DeliveryView,
 } from "./state";
-import { clearMemory, getBrowserStorage, loadRecentDelivery, rememberActiveOrder, resolveDelivery, type RecentDeliveryMemory } from "./memory";
+import { readDeliveryInput } from "./input";
 import { deliveryCardStyles } from "./styles";
 import { strings } from "./strings";
 import "./editor";
@@ -30,8 +30,10 @@ export interface DeliveryCardConfig extends RohlikCardConfig {
   show_refresh?: boolean;
   /** Show up to three compact upcoming-slot rows in the "no order" state. */
   show_slots?: boolean;
-  /** Show the "Order again on rohlik.cz" link in the "delivered" state. */
+  /** Show the "Order again on <shop>" link in the "delivered" state. */
   show_shop_link?: boolean;
+  /** Show live courier tracking (status steps, stops, distance) when available. */
+  show_tracking?: boolean;
   compact?: boolean;
   tap_action?: string | { action?: string };
 }
@@ -43,7 +45,7 @@ const CHIP_KIND: Record<DeliveryView["state"], "ok" | "neutral"> = {
   none: "neutral",
 };
 
-const SLOT_KEYS: readonly DeliverySlotKey[] = ["express", "standard", "eco"];
+const PHASE_STEPS: readonly DeliveryPhase[] = ["queued", "on_the_way", "at_door", "delivered"];
 
 const SLOT_ICON: Record<DeliverySlotKey, string> = {
   express: "mdi:lightning-bolt",
@@ -103,70 +105,8 @@ export class RohlikDeliveryCard extends RohlikBaseCard<DeliveryCardConfig> {
       : { columns: 12, rows: 6, min_columns: 6, min_rows: 3 };
   }
 
-  private textState(key: string): string | null {
-    const value = this.state(key)?.state;
-    if (!value || value === "unknown" || value === "unavailable") return null;
-    return value;
-  }
-
-  /**
-   * Watches `is_ordered` and persists the "an order just finished" marker
-   * across reloads (see `./memory.ts`). Called once per `buildInput()`, so
-   * once per render — cheap `localStorage` reads/writes, at most every 30s
-   * while the card is idle.
-   */
-  private syncMemory(orderData: DeliveryOrderData | null): RecentDeliveryMemory | null {
-    const device = this.config?.device;
-    if (!device) return null;
-    const storage = getBrowserStorage();
-
-    // While the sensor is unknown/unavailable (HA startup, integration
-    // reloading) nothing can be concluded: read the memory, never resolve it.
-    const orderedState = this.state("is_ordered")?.state;
-    if (orderedState !== "on" && orderedState !== "off") {
-      return loadRecentDelivery(storage, device);
-    }
-
-    if (this.isOn("is_ordered")) {
-      const orderId = orderData?.id ?? null;
-      const previous = loadRecentDelivery(storage, device);
-      if (previous && orderId != null && previous.orderId !== orderId) {
-        clearMemory(storage, device);
-      }
-      rememberActiveOrder(storage, device, {
-        orderId,
-        till: parseTs(this.state("next_order_till")?.state),
-      });
-      return null;
-    }
-
-    return resolveDelivery(storage, device, new Date());
-  }
-
   private buildInput(): DeliveryStateInput {
-    const orderData = (this.attr("is_ordered", "order_data") as DeliveryOrderData | undefined) ?? null;
-    return {
-      isOrdered: this.isOn("is_ordered"),
-      since: parseTs(this.state("next_order_since")?.state),
-      till: parseTs(this.state("next_order_till")?.state),
-      eta: parseTs(this.state("delivery_time")?.state),
-      orderData,
-      announcementText: this.textState("delivery_info"),
-      announcementExtra: (this.attr("delivery_info", "Additional Content") as string | undefined) ?? null,
-      announcementUpdatedAt: parseTs(this.attr("delivery_info", "Updated At") as string | undefined),
-      lastOrderAt: parseTs(this.state("last_order")?.state),
-      lastOrderItems: (this.attr("last_order", "Items") as number | undefined) ?? null,
-      lastOrderPrice: (this.attr("last_order", "Price") as number | undefined) ?? null,
-      firstDeliveryText: this.textState("first_delivery"),
-      isReserved: this.isOn("is_reserved"),
-      isExpressAvailable: this.isOn("is_express_available"),
-      recentDelivery: this.syncMemory(orderData),
-      slots: SLOT_KEYS.map((key) => ({
-        key,
-        start: parseTs(this.state(`${key}_slot`)?.state),
-        price: (this.attr(`${key}_slot`, "Price") as number | undefined) ?? null,
-      })),
-    };
+    return readDeliveryInput((key) => this.state(key), this.config.device);
   }
 
   private getView(): DeliveryView {
@@ -233,12 +173,20 @@ export class RohlikDeliveryCard extends RohlikBaseCard<DeliveryCardConfig> {
     `;
   }
 
+  /** Status chip: the tracked phase when known, else the coarse state. */
+  private renderStateChip(view: DeliveryView): TemplateResult {
+    const phase = view.state === "delivered" ? null : view.tracking.phase;
+    const kind = phase === "at_door" ? "warn" : phase === "queued" ? "neutral" : CHIP_KIND[view.state];
+    const label = phase ? this.t(`phase_${phase}`) : this.t(`chip_${view.state}`);
+    return html`<span class="chip ${kind}">${label}</span>`;
+  }
+
   private renderChips(view: DeliveryView): TemplateResult {
     const showExpress = this.config.show_express_chip !== false && view.isExpressAvailable;
     const showReserved = view.state === "none" && view.isReserved;
     return html`
       <div class="chips">
-        <span class="chip ${CHIP_KIND[view.state]}">${this.t(`chip_${view.state}`)}</span>
+        ${this.renderStateChip(view)}
         ${showExpress ? html`<span class="chip warn">${this.t("chip_express")}</span>` : nothing}
         ${showReserved ? html`<span class="chip neutral">${this.t("chip_reserved")}</span>` : nothing}
       </div>
@@ -258,7 +206,7 @@ export class RohlikDeliveryCard extends RohlikBaseCard<DeliveryCardConfig> {
         <div class="headline">
           <span class="big">${this.headlineMain(view)}</span>
         </div>
-        <span class="chip ${CHIP_KIND[view.state]}">${this.t(`chip_${view.state}`)}</span>
+        ${this.renderStateChip(view)}
       </div>
     `;
   }
@@ -274,6 +222,10 @@ export class RohlikDeliveryCard extends RohlikBaseCard<DeliveryCardConfig> {
       (view.state === "arriving" || view.state === "ordered") && !!view.since && !!view.till;
     const showSlots = this.config.show_slots !== false && view.state === "none" && view.slots.length > 0;
     const showShopLink = this.config.show_shop_link !== false && view.state === "delivered";
+    const showTracking =
+      this.config.show_tracking !== false &&
+      (view.state === "arriving" || view.state === "ordered") &&
+      view.tracking.phase != null;
     const reservedUntil =
       view.state === "none" && view.isReserved
         ? findReservedUntil(this.state("is_reserved")?.attributes)
@@ -299,6 +251,7 @@ export class RohlikDeliveryCard extends RohlikBaseCard<DeliveryCardConfig> {
       ${caption ? html`<div class="caption">${caption}</div>` : nothing}
 
       ${showSub ? html`<div class="sub">${this.renderSub(view)}</div>` : nothing}
+      ${showTracking ? this.renderTracking(view) : nothing}
       ${view.state === "arriving" ? this.renderTrack(view) : nothing}
       ${reservedUntil
         ? html`<div class="reserved-line">${this.t("reserved_until", { time: formatTime(this.hass, reservedUntil) })}</div>`
@@ -312,8 +265,8 @@ export class RohlikDeliveryCard extends RohlikBaseCard<DeliveryCardConfig> {
             <div class="actions">
               ${showShopLink
                 ? html`
-                    <a class="btn ghost" href="https://www.rohlik.cz" target="_blank" rel="noopener">
-                      ${this.t("shop_link")}
+                    <a class="btn ghost" href=${this.shop.url} target="_blank" rel="noopener">
+                      ${this.t("shop_link", { shop: this.shop.name })}
                     </a>
                   `
                 : nothing}
@@ -344,7 +297,7 @@ export class RohlikDeliveryCard extends RohlikBaseCard<DeliveryCardConfig> {
       today: this.t("today"),
       tomorrow: this.t("tomorrow"),
     });
-    const price = slot.price === 0 ? this.t("free") : slot.price != null ? formatMoney(this.hass, slot.price) : "";
+    const price = slot.price === 0 ? this.t("free") : slot.price != null ? this.money(slot.price) : "";
     return html`
       <div class="slot-row">
         <ha-icon icon=${SLOT_ICON[slot.key]}></ha-icon>
@@ -373,8 +326,14 @@ export class RohlikDeliveryCard extends RohlikBaseCard<DeliveryCardConfig> {
 
   private headlineCaption(view: DeliveryView): string {
     switch (view.state) {
-      case "arriving":
-        return this.t(view.eta ? "estimated" : "by");
+      case "arriving": {
+        if (!view.eta) return this.t("by");
+        const parts = [this.t("estimated")];
+        const source = view.tracking.etaSource;
+        if (source && source !== "slot") parts.push(this.t(`source_${source}`));
+        if (view.eta.getTime() > Date.now()) parts.push(formatCountdown(this.hass, view.eta));
+        return parts.join(" · ");
+      }
       case "ordered":
         return view.since ? formatCountdown(this.hass, view.since) : "";
       case "delivered":
@@ -394,6 +353,43 @@ export class RohlikDeliveryCard extends RohlikBaseCard<DeliveryCardConfig> {
     const parts = [`${this.t("window")} ${dayLabel} – ${formatTime(this.hass, view.till)}`];
     if (view.orderId != null) parts.push(`${this.t("order")} ${view.orderId}`);
     return html`${parts.join(" · ")}`;
+  }
+
+  /** Status steps plus a "2 stops before you · 1.4 km away" facts line. */
+  private renderTracking(view: DeliveryView): TemplateResult {
+    const { phase, stopsBefore, distanceM, lastMile } = view.tracking;
+    const current = phase ? PHASE_STEPS.indexOf(phase) : -1;
+    const facts: string[] = [];
+    if (phase === "at_door") {
+      facts.push(this.t("courier_at_door"));
+    } else if (stopsBefore != null) {
+      facts.push(stopsBefore === 0 ? this.t("you_are_next") : this.t("stops_before", { count: stopsBefore }));
+    }
+    if (distanceM != null && phase !== "at_door") {
+      facts.push(this.t("distance_away", { distance: formatDistance(this.hass, distanceM) }));
+    }
+    if (lastMile && phase !== "at_door" && !facts.length) facts.push(this.t("courier_close"));
+    return html`
+      <ol class="steps" aria-label=${this.t("tracking")}>
+        ${PHASE_STEPS.map(
+          (step, i) => html`
+            <li
+              class=${classMap({ step: true, done: i < current, current: i === current })}
+              aria-current=${i === current ? "step" : nothing}
+            >
+              <span class="dot"></span>
+              <span class="step-label">${this.t(`step_${step}`)}</span>
+            </li>
+          `,
+        )}
+      </ol>
+      ${facts.length
+        ? html`<div class=${classMap({ "tracking-facts": true, alert: phase === "at_door" })}>
+            <ha-icon icon=${phase === "at_door" ? "mdi:door-open" : "mdi:map-marker-path"}></ha-icon>
+            <span>${facts.join(" · ")}</span>
+          </div>`
+        : nothing}
+    `;
   }
 
   private renderTrack(view: DeliveryView): TemplateResult | typeof nothing {
@@ -430,7 +426,7 @@ export class RohlikDeliveryCard extends RohlikBaseCard<DeliveryCardConfig> {
 
   private renderSummary(view: DeliveryView): TemplateResult {
     const itemsLabel = this.t("items_count", { count: view.summaryItems ?? 0 });
-    const priceLabel = view.summaryPrice != null ? formatMoney(this.hass, view.summaryPrice) : "";
+    const priceLabel = view.summaryPrice != null ? this.money(view.summaryPrice) : "";
     return html`<span>${[itemsLabel, priceLabel].filter(Boolean).join(" · ")}</span>`;
   }
 }

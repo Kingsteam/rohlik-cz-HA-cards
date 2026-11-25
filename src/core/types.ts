@@ -69,6 +69,7 @@ export interface HomeAssistant {
   };
   connection: HassConnection;
   language?: string;
+  config?: { unit_system?: { length?: string; [key: string]: unknown }; [key: string]: unknown };
   callWS<T = unknown>(msg: Record<string, unknown>): Promise<T>;
   callService<T = unknown>(
     domain: string,

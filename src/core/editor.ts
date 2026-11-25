@@ -13,7 +13,7 @@ export interface HaFormSchema {
 }
 
 const BASE_SCHEMA: HaFormSchema[] = [
-  { name: "device", required: true, selector: { device: { integration: "rohlikcz" } } },
+  { name: "device", required: true, selector: { device: { filter: { integration: "rohlikcz" } } } },
   { name: "name", selector: { text: {} } },
   {
     name: "language",
@@ -32,8 +32,8 @@ const BASE_SCHEMA: HaFormSchema[] = [
 
 /** Labels for the base fields, merged under every editor's own `labels`. */
 const BASE_LABELS: Dict = {
-  cs: { device: "Zařízení (účet Rohlík.cz)", name: "Vlastní název", language: "Jazyk karty" },
-  en: { device: "Device (Rohlík.cz account)", name: "Custom name", language: "Card language" },
+  cs: { device: "Zařízení (účet Rohlík)", name: "Vlastní název", language: "Jazyk karty" },
+  en: { device: "Device (Rohlík account)", name: "Custom name", language: "Card language" },
 };
 
 /**

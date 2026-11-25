@@ -25,11 +25,14 @@ export interface RegisterCardOptions extends CustomCardEntry {
 export function registerCard(options: RegisterCardOptions): void {
   printBanner();
   window.customCards = window.customCards ?? [];
+  // The bundle can be loaded twice (HACS resource plus a manual one): keep one picker entry.
+  if (window.customCards.some((entry) => entry.type === options.type)) return;
   window.customCards.push({ preview: true, ...options });
 }
 
 export function registerBadge(options: RegisterCardOptions): void {
   printBanner();
   window.customBadges = window.customBadges ?? [];
+  if (window.customBadges.some((entry) => entry.type === options.type)) return;
   window.customBadges.push({ preview: true, ...options });
 }

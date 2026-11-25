@@ -60,6 +60,99 @@ export const deliveryCardStyles = css`
     margin: 16px 0 6px;
   }
 
+  /* Tracking stepper: four dots on a line, done ones filled with the accent. */
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    list-style: none;
+    margin: var(--ha-space-3, 12px) 0 var(--ha-space-1, 4px);
+    padding: 0;
+  }
+
+  .step {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--ha-space-1, 4px);
+    min-width: 0;
+    color: var(--secondary-text-color);
+    font-size: var(--ha-font-size-xs, 10px);
+    text-align: center;
+  }
+
+  /* Connector to the previous step. */
+  .step + .step::before {
+    content: "";
+    position: absolute;
+    top: 4px;
+    inset-inline-end: 50%;
+    width: 100%;
+    height: 2px;
+    background: var(--divider-color);
+  }
+
+  .step.done + .step::before,
+  .step.done + .step.current::before {
+    background: var(--rohlik-accent, var(--primary-color));
+  }
+
+  .step .dot {
+    position: relative;
+    z-index: 1;
+    width: 10px;
+    height: 10px;
+    box-sizing: border-box;
+    border-radius: var(--ha-border-radius-circle, 50%);
+    border: 2px solid var(--divider-color);
+    background: var(--card-background-color, #fff);
+  }
+
+  .step.done .dot,
+  .step.current .dot {
+    border-color: var(--rohlik-accent, var(--primary-color));
+    background: var(--rohlik-accent, var(--primary-color));
+  }
+
+  .step.current .dot {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--rohlik-accent, var(--primary-color)) 25%, transparent);
+  }
+
+  .step.current {
+    color: var(--primary-text-color);
+    font-weight: var(--ha-font-weight-medium, 500);
+  }
+
+  .step-label {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .tracking-facts {
+    display: flex;
+    align-items: center;
+    gap: var(--ha-space-2, 8px);
+    margin: var(--ha-space-2, 8px) 0 var(--ha-space-1, 4px);
+    color: var(--primary-text-color);
+    font-size: var(--ha-font-size-m, 14px);
+  }
+
+  .tracking-facts ha-icon {
+    --mdc-icon-size: 18px;
+    color: var(--rohlik-accent, var(--primary-color));
+    flex-shrink: 0;
+  }
+
+  .tracking-facts.alert {
+    font-weight: var(--ha-font-weight-medium, 500);
+  }
+
+  .tracking-facts.alert ha-icon {
+    color: var(--warning-color);
+  }
+
   .track {
     position: relative;
     height: 6px;
@@ -168,7 +261,7 @@ export const deliveryCardStyles = css`
     font-weight: 500;
     color: var(--primary-text-color);
     min-width: 60px;
-    text-align: right;
+    text-align: end;
   }
 
   .actions {

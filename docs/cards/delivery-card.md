@@ -18,7 +18,8 @@ companion badge, `rohlik-delivery-badge`.
 | `show_express_chip`    | boolean | `true`  | Show the "Express available" chip when `is_express_available` is on. |
 | `show_refresh`         | boolean | `true`  | Show the manual refresh button. |
 | `show_slots`           | boolean | `true`  | In the "no order" state, show up to three compact upcoming-slot rows (Express/Standard/Eco). |
-| `show_shop_link`       | boolean | `true`  | In the "delivered" state, show an "Order again on rohlik.cz" link. |
+| `show_shop_link`       | boolean | `true`  | In the "delivered" state, show an "Order again on <shop>" link (your account's shop: Rohlík.cz, Knuspr.de, …). |
+| `show_tracking`        | boolean | `true`  | With HA-RohlikCZ 1.3+, show live courier tracking: a Queued → On the way → At the door → Delivered stepper and a "2 stops before you · 1.4 km away" line. Hidden when the shop provides no tracking. |
 | `compact`              | boolean | `false` | Single-row layout: icon, headline, chip — no track, no rows. |
 | `tap_action`           | string  | —       | Set to `none` to disable tapping the card to open the `is_ordered` more-info dialog. |
 
@@ -92,6 +93,24 @@ blank card.
 The card re-renders every 30 seconds on its own so the countdown, the
 progress marker and the "delivered" 6-hour window stay accurate between
 `hass` updates.
+
+## Live tracking (HA-RohlikCZ 1.3+)
+
+When the integration reports `delivery_status`, the card uses it on top of the
+booked window:
+
+- The status chip shows the courier's phase: *Queued*, *On the way*, *At the
+  door* (amber, also when `courier_at_door` is on).
+- A courier that is already on the way turns the card to "arriving" even before
+  the window opens (early deliveries).
+- `delivered` switches the card to "delivered" right away, with the moment the
+  status flipped as the headline.
+- The ETA caption names its source ("courier tracking", "courier
+  announcement") and counts down.
+- `stops_before` and `courier_distance` fill the facts line under the stepper.
+
+Tracking that belongs to a different order (the previous one, still reported as
+delivered for a few minutes) is ignored.
 
 ## Badge — rohlik-delivery-badge
 

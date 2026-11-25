@@ -70,7 +70,7 @@ top of a view:
 <img src="docs/images/delivery-badge.png?v=0.1.0-alpha" alt="Delivery badge" width="240">
 
 Options: `show_announcement`, `show_order_summary`, `show_express_chip`, `show_refresh`,
-`show_slots`, `show_shop_link`, `compact`, `tap_action`. Full reference in
+`show_slots`, `show_shop_link`, `show_tracking`, `compact`, `tap_action`. Full reference in
 [docs/cards/delivery-card.md](docs/cards/delivery-card.md).
 
 ### Shopping Cart — `rohlik-cart-card`
@@ -80,8 +80,9 @@ Options: `show_announcement`, `show_order_summary`, `show_express_chip`, `show_r
 Your live cart as product rows with a quantity stepper and remove button, the total and
 item count, and an inline search box: results float over the page, `+` or Enter adds a
 product (type `3 rohlíky` to add three), a heart limits results to favourites. The
-**Order** button opens your Rohlík.cz cart in a new tab. Set `min_order` to get an
-"Above/Below minimum" chip and how much is missing; Xtra no-limit orders count as above.
+**Order** button opens your shop's cart in a new tab. An "Above/Below minimum" chip
+shows how much is missing to the shop's minimum order (or your own `min_order`); Xtra
+no-limit orders count as above.
 Long carts scroll inside the card (`list_max_height`).
 
 Options: `show_search`, `group_by_category`, `show_brand`, `max_items`, `list_max_height`,
@@ -167,7 +168,9 @@ throwaway Home Assistant container in [docs/dev/README.md](docs/dev/README.md).
 
 These cards require the [HA-RohlikCZ](https://github.com/dvejsada/HA-RohlikCZ)
 integration, version **1.0.0 or newer**, configured and running in your Home
-Assistant instance.
+Assistant instance. Version **1.3.0 or newer** adds live courier tracking to the delivery
+card and badge, the shop's minimum order to the cart card, and support for every Rohlík
+Group shop (Knuspr.de, Gurkerl.at, Kifli.hu, Sezamo.ro) with amounts in its currency.
 
 ## Development
 

@@ -15,7 +15,8 @@ import type {
   LovelaceGridOptions,
 } from "./types";
 import { findRohlikDevices, resolveEntities } from "./discovery";
-import { formatAgo, parseTs } from "./format";
+import { formatAgo, formatMoney, parseTs } from "./format";
+import { currencyFromUnit, shopForDevice, type ShopInfo } from "./shop";
 import { localize, coreStrings, withLanguage, type CardLanguage, type Dict } from "./localize";
 import { sharedStyles } from "./styles";
 
@@ -28,6 +29,9 @@ export interface RohlikCardConfig extends LovelaceCardConfig {
 }
 
 const STALE_AFTER_MINUTES = 20;
+
+/** Sensors whose unit is the account's currency, in lookup order. */
+const MONEY_SENSORS = ["cart_price", "credit_amount", "monthly_spent", "yearly_spent", "alltime_spent"];
 
 /**
  * Shared behaviour for every Rohlík card: config validation, device/entity
@@ -134,6 +138,28 @@ export abstract class RohlikBaseCard<C extends RohlikCardConfig = RohlikCardConf
     if (this.config?.name) return this.config.name;
     const device = this.hass?.devices?.[this.config?.device];
     return device?.name_by_user || device?.name || "Rohlík.cz";
+  }
+
+  /** The account's shop (Rohlík.cz, Knuspr.de, …), from the device's manufacturer. */
+  protected get shop(): ShopInfo {
+    return shopForDevice(this.hass, this.config?.device);
+  }
+
+  /**
+   * ISO currency of the account: the unit of the first money sensor that
+   * has one (HA-RohlikCZ 1.1+ sets it per shop), else the shop's currency.
+   */
+  protected get currency(): string {
+    for (const key of MONEY_SENSORS) {
+      const currency = currencyFromUnit(this.attr(key, "unit_of_measurement"));
+      if (currency) return currency;
+    }
+    return this.shop.currency;
+  }
+
+  /** Formats an amount in the account's currency. */
+  protected money(amount: number, currency = this.currency): string {
+    return formatMoney(this.hass, amount, currency);
   }
 
   /** Sets `--rohlik-accent` from `config.accent`, when given. */

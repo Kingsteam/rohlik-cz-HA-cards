@@ -243,7 +243,7 @@ export const styles = css`
   .breakdown-spent {
     grid-area: amount;
     min-width: 64px;
-    text-align: right;
+    text-align: end;
     font-variant-numeric: tabular-nums;
     color: var(--primary-text-color);
     font-size: 0.88rem;

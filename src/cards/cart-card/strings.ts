@@ -23,7 +23,7 @@ export const strings: Dict = {
     adding: "Přidávám {name}…",
     order: "Objednat",
     below_minimum_order: "Pod minimální hodnotou objednávky",
-    order_hint: "Otevře košík na rohlik.cz v novém okně",
+    order_hint: "Otevře košík na {shop} v novém okně",
   },
   en: {
     title: "Shopping cart",
@@ -47,7 +47,7 @@ export const strings: Dict = {
     adding: "Adding {name}…",
     order: "Order",
     below_minimum_order: "Below minimum order",
-    order_hint: "Opens the cart on rohlik.cz in a new tab",
+    order_hint: "Opens the cart on {shop} in a new tab",
   },
 };
 
@@ -58,7 +58,7 @@ export const labels: Dict = {
     show_search: "Zobrazit vyhledávání",
     group_by_category: "Seskupit podle kategorie",
     show_brand: "Zobrazit značku",
-    min_order: "Minimální hodnota objednávky (Kč, 0 = neposuzovat)",
+    min_order: "Minimální hodnota objednávky (prázdné = minimum obchodu, 0 = neposuzovat)",
     list_max_height: "Max. výška seznamu (0 = bez omezení)",
     max_items: "Max. počet zobrazených položek",
     show_order_button: "Tlačítko Objednat",
@@ -70,7 +70,7 @@ export const labels: Dict = {
     show_search: "Show search",
     group_by_category: "Group by category",
     show_brand: "Show brand",
-    min_order: "Minimum order value (CZK, 0 = do not judge)",
+    min_order: "Minimum order value (empty = the shop's minimum, 0 = do not judge)",
     list_max_height: "Max list height (0 = unlimited)",
     max_items: "Max. items shown",
     show_order_button: "Order button",

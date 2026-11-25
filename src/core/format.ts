@@ -41,6 +41,22 @@ export function formatMoney(hass: HomeAssistant, amount: number, currency = "CZK
   }
 }
 
+/**
+ * "350 m" / "1.4 km" — or miles/feet when the HA unit system is imperial.
+ * Takes metres (see `cards/delivery-card/input.ts#distanceInMetres`).
+ */
+export function formatDistance(hass: HomeAssistant, metres: number): string {
+  const locale = lang(hass);
+  const imperial = hass.config?.unit_system?.length === "mi";
+  const fmt = (value: number, unit: string, digits: number): string =>
+    new Intl.NumberFormat(locale, { style: "unit", unit, maximumFractionDigits: digits }).format(value);
+  if (imperial) {
+    const feet = metres / 0.3048;
+    return feet < 1000 ? fmt(Math.round(feet / 10) * 10, "foot", 0) : fmt(metres / 1609.344, "mile", 1);
+  }
+  return metres < 1000 ? fmt(Math.round(metres / 10) * 10, "meter", 0) : fmt(metres / 1000, "kilometer", 1);
+}
+
 export function formatTime(hass: HomeAssistant, date: Date): string {
   return new Intl.DateTimeFormat(lang(hass), {
     hour: "2-digit",

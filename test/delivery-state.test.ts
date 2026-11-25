@@ -374,3 +374,91 @@ describe("findReservedUntil", () => {
     expect(findReservedUntil({})).toBeNull();
   });
 });
+
+describe("computeDeliveryState — live tracking (HA-RohlikCZ 1.3+)", () => {
+  const LATER = new Date("2026-09-13T17:00:00Z");
+  const LATER_END = new Date("2026-09-13T19:00:00Z");
+
+  function tracking(overrides: Partial<NonNullable<DeliveryStateInput["tracking"]>> = {}) {
+    return {
+      status: null,
+      statusSince: null,
+      orderId: null,
+      stopsBefore: null,
+      distanceM: null,
+      minutesLeft: null,
+      etaSource: null,
+      courierAtDoor: false,
+      lastMile: false,
+      ...overrides,
+    } as NonNullable<DeliveryStateInput["tracking"]>;
+  }
+
+  it("is 'arriving' before the window when the courier is already on the way", () => {
+    const view = computeDeliveryState(
+      baseInput({
+        isOrdered: true,
+        since: LATER,
+        till: LATER_END,
+        orderData: { id: 7 },
+        tracking: tracking({ status: "on_the_way", orderId: 7, stopsBefore: 2, distanceM: 1400 }),
+      }),
+      NOW,
+    );
+    expect(view.state).toBe("arriving");
+    expect(view.tracking).toMatchObject({ phase: "on_the_way", stopsBefore: 2, distanceM: 1400 });
+  });
+
+  it("stays 'ordered' with a queued phase while the order is in the queue", () => {
+    const view = computeDeliveryState(
+      baseInput({ isOrdered: true, since: LATER, till: LATER_END, tracking: tracking({ status: "in_queue" }) }),
+      NOW,
+    );
+    expect(view.state).toBe("ordered");
+    expect(view.tracking.phase).toBe("queued");
+  });
+
+  it("reports 'at_door' when the courier-at-door sensor is on", () => {
+    const view = computeDeliveryState(
+      baseInput({ isOrdered: true, since: LATER, tracking: tracking({ status: "on_the_way", courierAtDoor: true }) }),
+      NOW,
+    );
+    expect(view.state).toBe("arriving");
+    expect(view.tracking.phase).toBe("at_door");
+  });
+
+  it("is 'delivered' from tracking, with the delivery moment as headline", () => {
+    const at = new Date("2026-09-13T11:40:00Z");
+    const view = computeDeliveryState(
+      baseInput({
+        isOrdered: true,
+        orderData: { id: 7, itemsCount: 12 },
+        tracking: tracking({ status: "delivered", statusSince: at, orderId: 7 }),
+      }),
+      NOW,
+    );
+    expect(view.state).toBe("delivered");
+    expect(view.deliveredAt).toEqual(at);
+    expect(view.summaryItems).toBe(12);
+  });
+
+  it("ignores a previous order's 'delivered' tracking when the next order differs", () => {
+    const view = computeDeliveryState(
+      baseInput({
+        isOrdered: true,
+        since: LATER,
+        orderData: { id: 8 },
+        tracking: tracking({ status: "delivered", statusSince: NOW, orderId: 7 }),
+      }),
+      NOW,
+    );
+    expect(view.state).toBe("ordered");
+    expect(view.tracking.phase).toBeNull();
+  });
+
+  it("behaves as before without tracking", () => {
+    const view = computeDeliveryState(baseInput({ isOrdered: true, since: LATER }), NOW);
+    expect(view.state).toBe("ordered");
+    expect(view.tracking.phase).toBeNull();
+  });
+});
