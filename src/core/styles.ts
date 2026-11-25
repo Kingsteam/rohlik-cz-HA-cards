@@ -10,6 +10,10 @@ export const sharedStyles = css`
   :host {
     --rohlik-accent: var(--primary-color);
     display: block;
+    /* Fill the grid cell when HA gives the card a fixed height (sections view
+       with numeric rows, panel view); in content-sized contexts (rows "auto",
+       masonry, sidebar) the parent's height is auto, so this computes to auto. */
+    height: 100%;
     /* Lets cards adapt to their own width with @container queries. */
     container-type: inline-size;
   }
@@ -20,9 +24,15 @@ export const sharedStyles = css`
     height: 100%;
     padding: var(--ha-space-4, 16px);
     box-sizing: border-box;
-    /* Deliberately NOT a scroll container. On touch, a scrollable card eats
+    /* NOT a scroll container by default. On touch, a scrollable card eats
        the swipe before the dashboard view gets it, so the page stops
-       scrolling. Cards size themselves through getGridOptions() instead. */
+       scrolling. Cards are content-sized (rows "auto") instead. */
+  }
+
+  /* Only when the user picked a fixed height (see RohlikBaseCard.fixedHeight):
+     scroll inside rather than paint over the next card. */
+  :host([fixed]) ha-card {
+    overflow-y: auto;
   }
 
   .header {

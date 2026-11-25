@@ -75,5 +75,5 @@ layout: auto
 
 ## Grid sizing
 
-`auto` and `row` layout: 12 columns × 2 rows (minimum 6 × 2). `column`
-layout: 4 columns × 4 rows (minimum 3 × 3).
+`auto` and `row` layout: 12 columns wide (minimum 6). `column` layout: 4
+columns wide (minimum 3). In a sections dashboard the card is **as tall as its content** (`rows: "auto"`), so it never overlaps the card below or leaves an empty band. You can still pick a fixed height in the card's **Layout** tab: the card then fills that cell and scrolls inside it rather than spilling over.

@@ -99,16 +99,17 @@ export class RohlikDeliveryCard extends RohlikBaseCard<DeliveryCardConfig> {
     }
   }
 
-  public getCardSize(): number {
-    return this.config?.compact ? 2 : 4;
+  protected estimatedCardSize(): number {
+    return this.config?.compact ? 2 : 8;
   }
 
   public getGridOptions(): LovelaceGridOptions {
+    // Compact is a single line (~90 px), so two rows (120 px) always fit.
+    // The full card's height varies a lot by state (tracking stepper, slots,
+    // announcement), so it is sized to its content.
     return this.config?.compact
       ? { columns: 6, rows: 2, min_columns: 6, min_rows: 2 }
-      : // Height varies a lot by state (tracking stepper, slots, announcement),
-        // so let the section size it to the content.
-        { columns: 12, rows: "auto", min_columns: 6, min_rows: 3 };
+      : { columns: 12, rows: "auto", min_columns: 6, min_rows: 3 };
   }
 
   private buildInput(): DeliveryStateInput {

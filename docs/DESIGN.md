@@ -36,7 +36,17 @@ Decisions already taken (do not re-open):
    Money and time are formatted with `Intl` and the HA locale (`hass.locale`).
 4. **Visual editor** via `getConfigElement()` using `ha-form` with a schema, and
    `getStubConfig(hass)` that pre-fills the first Rohlík device found.
-5. **Sections layout** support via `getGridOptions()`.
+5. **Sections layout** support via `getGridOptions()`. Cards are **content-sized**
+   (`rows: "auto"`): their height varies with state, data, language and width, and a
+   numeric row count gives the cell a fixed height that HA neither clips nor scrolls,
+   so the card either spills over the next card or leaves an empty band (issue #13).
+   `:host` and `ha-card` are `height: 100%`, so a user-chosen fixed height (numeric
+   `grid_options.rows`, or a panel view) is filled; the base card then sets the `fixed`
+   host attribute and the card scrolls inside it (the cart scrolls its item list).
+   Only the compact delivery card keeps fixed rows (one line, 2 rows). `getCardSize()`
+   returns the rendered height in 50 px units (an estimate before first render); HA
+   uses it for masonry columns and as the starting size when "auto height" is turned
+   off. `npm run check:layout` replicates the sections grid and asserts all of this.
 6. **Freshness footer** (optional per card): "updated N min ago" from the `updated` sensor,
    amber when older than 20 minutes.
 7. No dependency on `custom-card-helpers`. Local minimal types live in `src/core/types.ts`.
@@ -173,7 +183,7 @@ Options: `device` (req), `name?`, `show_announcement` (true), `show_order_summar
 `show_express_chip` (true), `show_refresh` (true), `compact` (false), `tap_action?`.
 Refresh button calls `update_delivery_times` (arriving/ordered) or `refresh_slots` (none).
 Tap on the card opens more-info for `is_ordered`.
-Grid: full 12 cols × 3 rows (min 6×2); compact 6×2.
+Grid: full 12 cols, content-sized (min 6 cols); compact 6×2.
 
 ### rohlik-delivery-badge
 
@@ -191,9 +201,9 @@ with `"<qty> <name>"` parsing (leading integer = qty).
 Item rows parsed from todo items: name, category · brand, stepper (− qty +), line price, remove ×.
 Stepper: − to 0 or × → `todo.remove_item`; other changes → remove then `add_to_cart(product_id, newQty)`,
 optimistic, revert + inline error on failure.
-`max_items` (default 6) collapses the rest behind "Show all N". `group_by_category` (false).
+`max_items` (unset: all on desktop, 8 on touch) collapses the rest behind "Show all N". `group_by_category` (false).
 Empty state: search box + "Your last order had N items" from `last_order.Items`.
-Grid: 12 × 4 (min 6×3).
+Grid: 12 cols, content-sized (min 6).
 
 ### rohlik-slots-card
 
@@ -206,7 +216,7 @@ Watch mode toggle: polls `refresh_slots` every `watch_interval` s (default 15, m
 `document.visibilityState === "visible"`; stops on hide/disconnect; state kept in `localStorage`
 per card key.
 Options: `device`, `name?`, `slots`, `show_price`, `show_location`, `watch_interval`, `layout` (`row`|`column`).
-Grid: row 12×2, column 4×4.
+Grid: row 12 cols, column 4 cols; content-sized.
 
 ### rohlik-account-card
 
@@ -214,7 +224,7 @@ Header: device name (or `name`), chip "Xtra · N days" (amber if < 7) or "No Xtr
 Stat tiles (`stats`, default order): `credit`, `bags` (current / max, deposit caption),
 `no_limit`, `free_express`, `parents_club`, `reusable`. Perk tiles hidden when not premium.
 Footer: last order line (date · items · price) and "updated N min ago" + Refresh → `update_data`.
-Grid: 6×3.
+Grid: 6 cols, content-sized (min 4).
 
 ### rohlik-spending-card
 
@@ -226,7 +236,7 @@ Items `items_*`. Horizontal bars proportional to the top entry; each row: name, 
 tap → expands units and avg unit price. If no analytics sensors exist: one-line hint
 "Enable Spending Analytics in the integration options to see a breakdown."
 Options: `device`, `name?`, `default_period`, `default_level`, `top_n` (10), `show_years`, `show_totals`.
-Grid: 12×5 (min 6×3).
+Grid: 12 cols, content-sized (min 6).
 
 ## Repository layout
 

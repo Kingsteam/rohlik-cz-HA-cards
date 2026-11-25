@@ -13,7 +13,8 @@
     "test": "vitest run",
     "format": "prettier --write .",
     "screenshots": "node docs/dev/preview/screenshot.mjs",
-    "check:scroll": "node docs/dev/preview/scroll-check.mjs"
+    "check:scroll": "node docs/dev/preview/scroll-check.mjs",
+    "check:layout": "node docs/dev/preview/layout-check.mjs"
   },
   "dependencies": {
     "lit": "^3.0.0"

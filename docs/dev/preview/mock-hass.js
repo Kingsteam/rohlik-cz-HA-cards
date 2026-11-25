@@ -81,18 +81,24 @@ export function installShims() {
           const root = this.attachShadow({ mode: "open" });
           root.innerHTML = `
             <style>
+              /* Mirrors HA's ha-card (src/components/ha-card.ts): a bare
+                 <slot>, so the card's own children are laid out by the
+                 host (our cards make it a flex column), and a themeable
+                 1px border. No padding or overflow of its own. */
               :host {
                 display: block;
+                position: relative;
                 border-radius: var(--ha-card-border-radius, 12px);
+                border-width: var(--ha-card-border-width, 1px);
+                border-style: solid;
+                border-color: var(--ha-card-border-color, var(--divider-color, #e0e0e0));
                 background: var(--ha-card-background, var(--card-background-color, #fff));
-                box-shadow: var(--ha-card-box-shadow, 0 2px 4px rgba(0, 0, 0, 0.14));
+                box-shadow: var(--ha-card-box-shadow, none);
                 color: var(--primary-text-color, #212121);
                 box-sizing: border-box;
-                overflow: hidden;
               }
-              .wrap { padding: 16px; box-sizing: border-box; }
             </style>
-            <div class="wrap"><slot></slot></div>
+            <slot></slot>
           `;
         }
       },
@@ -239,7 +245,18 @@ const CART_ITEMS = [
   { name: "Mražená zelenina mix 450g", qty: 2, price: 79.8, category: "Mražené potraviny", brand: "Bonduelle", id: 102234 },
   { name: "Těstoviny špagety 500g", qty: 3, price: 98.7, category: "Trvanlivé potraviny", brand: "Barilla", id: 102456 },
 ];
-const CART_TOTAL = CART_ITEMS.reduce((sum, i) => sum + i.price, 0); // 935.4
+
+/** Cart contents for `?cart=`: the 11 items above, none, or 40 (layout checks). */
+function cartItemsFor(kind) {
+  if (kind === "empty") return [];
+  if (kind === "many") {
+    return Array.from({ length: 40 }, (_, i) => {
+      const base = CART_ITEMS[i % CART_ITEMS.length];
+      return { ...base, name: `${base.name} #${i + 1}`, id: base.id + i * 1000 };
+    });
+  }
+  return CART_ITEMS;
+}
 
 // ---- Spending analytics ----
 const BY_YEAR = {
@@ -365,7 +382,9 @@ const MONTHLY_HISTORY = [
  * Builds a full mock `hass` object for `state` ("arriving" | "ordered" |
  * "none" | "delivered") in `lang` ("cs" | "en").
  */
-export function buildHass({ lang = "cs", state = "arriving" } = {}) {
+export function buildHass({ lang = "cs", state = "arriving", cart = "default" } = {}) {
+  const cartItems = cartItemsFor(cart);
+  const cartTotal = cartItems.reduce((sum, i) => sum + i.price, 0);
   const states = {};
   const entities = {};
 
@@ -500,8 +519,8 @@ export function buildHass({ lang = "cs", state = "arriving" } = {}) {
   }
 
   // ---- sensor: cart ----
-  add("sensor", "cart_price", CART_TOTAL, {
-    "Total items": CART_ITEMS.length,
+  add("sensor", "cart_price", cartTotal, {
+    "Total items": cartItems.length,
     "Can Order": false,
     "Minimum Order Price": 500,
     unit_of_measurement: lang === "cs" ? "Kč" : "CZK",
@@ -571,7 +590,7 @@ export function buildHass({ lang = "cs", state = "arriving" } = {}) {
   addItems("items_all_time", ITEMS_ALL);
 
   // ---- todo ----
-  states[CART_ENTITY_ID] = st(CART_ITEMS.length, {});
+  states[CART_ENTITY_ID] = st(cartItems.length, {});
   entities[CART_ENTITY_ID] = {
     entity_id: CART_ENTITY_ID,
     device_id: DEVICE_ID,
@@ -601,7 +620,7 @@ export function buildHass({ lang = "cs", state = "arriving" } = {}) {
       }
       if (msg.type === "todo/item/list") {
         return {
-          items: CART_ITEMS.map((item, i) => ({
+          items: cartItems.map((item, i) => ({
             uid: `cart-item-${i + 1}`,
             summary: `${item.name} (${item.qty}) - ${item.price} CZK`,
             status: "needs_action",

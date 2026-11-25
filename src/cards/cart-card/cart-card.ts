@@ -54,6 +54,8 @@ interface SearchAndAddResponse {
 }
 
 const DEFAULT_MAX_ITEMS = 0; // 0 = show every line; the list scrolls instead
+/** Default line limit on touch devices, where the list doesn't scroll inside. */
+const TOUCH_MAX_ITEMS = 8;
 const DEFAULT_LIST_MAX_HEIGHT = 360;
 const SEARCH_DEBOUNCE_MS = 400;
 const SEARCH_MIN_CHARS = 2;
@@ -116,14 +118,14 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
     return { ...RohlikBaseCard.getStubConfig(hass), type: "custom:rohlik-cart-card" };
   }
 
-  getCardSize(): number {
-    return 5;
+  protected estimatedCardSize(): number {
+    return 12;
   }
 
   getGridOptions(): LovelaceGridOptions {
-    // Fixed row count in the sections layout (resizable in the editor); the
-    // item list scrolls inside the card, so a long cart never overflows it.
-    return { columns: 12, rows: 8, min_columns: 6, min_rows: 4 };
+    // Content-sized: the list is capped by height (mouse) or item count
+    // (touch) instead. A user-chosen fixed height scrolls the list inside.
+    return { columns: 12, rows: "auto", min_columns: 6, min_rows: 4 };
   }
 
   public disconnectedCallback(): void {
@@ -240,18 +242,35 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
    * Height cap for the item list, in px (0 = uncapped).
    *
    * Always 0 on touch devices: an inner scroll region there swallows the
-   * swipe meant for the dashboard view, so the list grows instead and the
-   * page scrolls as usual.
+   * swipe meant for the dashboard view, so the list is capped by item count
+   * instead (see `effectiveMaxItems`). Also 0 when the user picked a fixed
+   * card height: the list then fills the remaining space and scrolls.
    */
   private listMaxHeight(): number {
+    if (this.fixedHeight) return 0;
     const configured = this.config.list_max_height ?? DEFAULT_LIST_MAX_HEIGHT;
     if (configured <= 0) return 0;
-    try {
-      if (window.matchMedia?.("(pointer: coarse)").matches) return 0;
-    } catch {
-      // matchMedia unavailable (non-browser env): keep the configured cap.
-    }
+    if (this.isTouch()) return 0;
     return configured;
+  }
+
+  private isTouch(): boolean {
+    try {
+      return Boolean(window.matchMedia?.("(pointer: coarse)").matches);
+    } catch {
+      return false; // matchMedia unavailable (non-browser env)
+    }
+  }
+
+  /**
+   * Lines shown before "Show all (N)". An explicit `max_items` wins (0 =
+   * all). Unset: all on mouse (the list scrolls within `list_max_height`),
+   * `TOUCH_MAX_ITEMS` on touch, where the list can't scroll inside and a long
+   * cart would otherwise make a very tall card.
+   */
+  private effectiveMaxItems(): number {
+    if (this.config.max_items != null) return this.config.max_items;
+    return this.isTouch() && !this.fixedHeight ? TOUCH_MAX_ITEMS : DEFAULT_MAX_ITEMS;
   }
 
   private async ensureConfigEntryId(): Promise<string | undefined> {
@@ -534,7 +553,7 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
     const showSearch = this.config.show_search !== false;
     const showBrand = this.config.show_brand !== false;
     const grouped = this.config.group_by_category === true;
-    const maxItems = this.config.max_items ?? DEFAULT_MAX_ITEMS;
+    const maxItems = this.effectiveMaxItems();
     const showOrderButton = this.config.show_order_button !== false;
     const canOrderNow = !isEmpty;
 

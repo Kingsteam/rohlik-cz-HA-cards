@@ -67,9 +67,13 @@ export class RohlikSlotsCard extends RohlikBaseCard<SlotsCardConfig> {
 
   public getGridOptions(): LovelaceGridOptions {
     if (this.config?.layout === "column") {
-      return { columns: 4, rows: 6, min_columns: 3, min_rows: 4 };
+      return { columns: 4, rows: "auto", min_columns: 3, min_rows: 4 };
     }
-    return { columns: 12, rows: 3, min_columns: 6, min_rows: 2 };
+    return { columns: 12, rows: "auto", min_columns: 6, min_rows: 2 };
+  }
+
+  protected estimatedCardSize(): number {
+    return this.config?.layout === "column" ? 9 : 6;
   }
 
   public setConfig(config: SlotsCardConfig): void {

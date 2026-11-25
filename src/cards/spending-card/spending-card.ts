@@ -94,12 +94,12 @@ export class RohlikSpendingCard extends RohlikBaseCard<SpendingCardConfig> {
     return { ...RohlikBaseCard.getStubConfig(hass), type: "custom:rohlik-spending-card" };
   }
 
-  getCardSize(): number {
-    return 6;
+  protected estimatedCardSize(): number {
+    return 13;
   }
 
   getGridOptions(): LovelaceGridOptions {
-    return { columns: 12, rows: 12, min_columns: 6, min_rows: 5 };
+    return { columns: 12, rows: "auto", min_columns: 6, min_rows: 5 };
   }
 
   private get effectivePeriod(): Period {

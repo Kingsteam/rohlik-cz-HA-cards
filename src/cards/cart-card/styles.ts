@@ -20,6 +20,12 @@ export const cartStyles = css`
     overflow-y: auto;
   }
 
+  /* User-chosen fixed height: the list is the one scroller (it fills the space
+     left by the header, search and footer); the card itself stays put. */
+  :host([fixed]) ha-card {
+    overflow: hidden;
+  }
+
   .caption {
     color: var(--secondary-text-color);
     font-size: 0.85rem;

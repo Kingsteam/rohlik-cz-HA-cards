@@ -19,6 +19,7 @@ import { formatAgo, formatMoney, parseTs } from "./format";
 import { currencyFromUnit, shopForDevice, type ShopInfo } from "./shop";
 import { localize, coreStrings, withLanguage, type CardLanguage, type Dict } from "./localize";
 import { sharedStyles } from "./styles";
+import { isFixedHeight } from "./layout";
 
 export interface RohlikCardConfig extends LovelaceCardConfig {
   device: string;
@@ -79,6 +80,13 @@ export abstract class RohlikBaseCard<C extends RohlikCardConfig = RohlikCardConf
     return localized === hass ? undefined : localized;
   }
 
+  /**
+   * Set by HA's `hui-card`: `"grid"` in a sections view, `"panel"` in a panel
+   * view, `"masonry"` (or unset) elsewhere. Used to tell a user-chosen fixed
+   * height apart from the default content-sized one.
+   */
+  @property({ attribute: false }) public layout?: string;
+
   @state() protected config!: C;
 
   @state() protected entities: Map<string, string> = new Map();
@@ -102,12 +110,44 @@ export abstract class RohlikBaseCard<C extends RohlikCardConfig = RohlikCardConf
     }
   }
 
+  /**
+   * Height in 50 px units, for masonry column balancing and the editor's
+   * starting size when the user switches "auto height" off. The rendered
+   * height when known, else the card's estimate.
+   */
   getCardSize(): number {
-    return 3;
+    const height = this.isConnected ? this.offsetHeight : 0;
+    return height > 0 ? Math.max(1, Math.ceil(height / 50)) : this.estimatedCardSize();
   }
 
+  /** Typical rendered height in 50 px units, used before the card has rendered. */
+  protected estimatedCardSize(): number {
+    return 4;
+  }
+
+  /**
+   * Content-sized by default: the cards' height varies with state, data,
+   * language and width, so a fixed row count either spills over the next
+   * card or leaves an empty band (issue #13). Users can still pick a fixed
+   * height in the editor; see `fixedHeight`.
+   */
   getGridOptions(): LovelaceGridOptions {
-    return { columns: 12, rows: 4, min_columns: 6, min_rows: 2 };
+    return { columns: 12, rows: "auto", min_columns: 6, min_rows: 2 };
+  }
+
+  /**
+   * Whether the card sits in a cell of fixed height: a panel view, or a
+   * sections view where the user picked a number of rows. Reflected as the
+   * `fixed` host attribute, which lets the card scroll inside instead of
+   * spilling over its neighbours.
+   */
+  protected get fixedHeight(): boolean {
+    return isFixedHeight(this.layout, this.config?.grid_options);
+  }
+
+  protected updated(changed: PropertyValues<this>): void {
+    super.updated(changed);
+    this.toggleAttribute("fixed", this.fixedHeight);
   }
 
   static getStubConfig(hass: HomeAssistant): Partial<RohlikCardConfig> {

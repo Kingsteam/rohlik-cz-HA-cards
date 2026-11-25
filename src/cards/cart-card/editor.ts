@@ -23,7 +23,6 @@ export class RohlikCartCardEditor extends RohlikBaseEditor<CartCardConfig> {
     show_search: true,
     show_brand: true,
     group_by_category: false,
-    max_items: 0,
     list_max_height: 360,
     show_order_button: true,
   };
