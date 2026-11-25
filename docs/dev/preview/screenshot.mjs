@@ -242,6 +242,19 @@ async function main() {
       await context.close();
     }
 
+    // ---- Gurkerl.at: favourites list and every delivery window ----
+    {
+      const { context, page, errors } = await openPreview(
+        browser,
+        "?lang=de&shop=at&theme=light&state=none&images=1&windows=1",
+      );
+      allErrors.push(...errors.map((e) => `[at/de/favourites] ${e}`));
+      await shootElement(page, "rohlik-favourites-card", "favourites-card-de.png");
+      await shootElement(page, "rohlik-slots-card", "slots-card-windows-de.png");
+      report.push({ state: "at/de/favourites", errors });
+      await context.close();
+    }
+
     // ---- Gurkerl.at, dark theme, arriving (errors only) ----
     {
       const { context, errors } = await openPreview(
