@@ -33,6 +33,12 @@ interface StoredMemory {
   seenAt: string | null;
   /** `null` while the order is still active (not yet resolved into a "delivered" memory). */
   endedAt: string | null;
+  /**
+   * The delivery moment reported by live tracking (HA-RohlikCZ 1.3+), when
+   * seen. Kept apart from `till` because `rememberActiveOrder` rewrites
+   * `till` on every render; only ever moves earlier (see `recordDeliveredAt`).
+   */
+  deliveredAt: string | null;
 }
 
 /**
@@ -65,6 +71,7 @@ function readStored(storage: StorageLike, device: string): StoredMemory | null {
       till: typeof parsed.till === "string" ? parsed.till : null,
       seenAt: typeof parsed.seenAt === "string" ? parsed.seenAt : null,
       endedAt: typeof parsed.endedAt === "string" ? parsed.endedAt : null,
+      deliveredAt: typeof parsed.deliveredAt === "string" ? parsed.deliveredAt : null,
     };
   } catch {
     return null;
@@ -84,7 +91,9 @@ function toMemory(stored: StoredMemory): RecentDeliveryMemory | null {
   if (!stored.endedAt) return null;
   const endedAt = new Date(stored.endedAt);
   if (Number.isNaN(endedAt.getTime())) return null;
-  const till = stored.till ? new Date(stored.till) : null;
+  // A tracked delivery moment beats the booked window end.
+  const tillIso = stored.deliveredAt ?? stored.till;
+  const till = tillIso ? new Date(tillIso) : null;
   return { orderId: stored.orderId, till: till && !Number.isNaN(till.getTime()) ? till : null, endedAt };
 }
 
@@ -101,11 +110,15 @@ export function rememberActiveOrder(
   order: { orderId: string | number | null; till: Date | null },
   now: Date = new Date(),
 ): void {
+  const previous = readStored(storage, device);
+  const sameOrder =
+    previous != null && order.orderId != null && String(previous.orderId) === String(order.orderId);
   writeStored(storage, device, {
     orderId: order.orderId,
     till: order.till ? order.till.toISOString() : null,
     seenAt: now.toISOString(),
     endedAt: null,
+    deliveredAt: sameOrder ? previous.deliveredAt : null,
   });
 }
 
@@ -185,10 +198,16 @@ export function getBrowserStorage(): StorageLike {
 }
 
 /**
- * Pins the remembered delivery time to the moment live tracking reported
- * `delivered` (HA-RohlikCZ 1.3+). The integration only keeps that status for
- * about 30 minutes, after which the card would otherwise fall back to the
- * slot end. Only touches a record for the same order (or one with no id).
+ * Remembers the moment live tracking reported `delivered` (HA-RohlikCZ
+ * 1.3+). The integration keeps that status for only about 30 minutes; the
+ * memory keeps "Delivered" (at the right time) for the usual 6 hours.
+ *
+ * - Same order (or ids unknown): pins `deliveredAt`, only ever moving it
+ *   earlier — `last_changed` is re-stamped when HA restarts or the
+ *   integration reloads, which must not push the time later.
+ * - Another order still active: left alone, it is the one that matters.
+ * - Nothing stored, or a finished older order: writes a resolved record, so
+ *   a browser that never saw the order active still shows "Delivered".
  */
 export function recordDeliveredAt(
   storage: StorageLike,
@@ -197,9 +216,17 @@ export function recordDeliveredAt(
   at: Date,
 ): void {
   const stored = readStored(storage, device);
-  if (!stored) return;
-  if (orderId != null && stored.orderId != null && String(stored.orderId) !== String(orderId)) return;
   const iso = at.toISOString();
-  if (stored.till === iso) return;
-  writeStored(storage, device, { ...stored, till: iso });
+  const sameOrder =
+    stored != null &&
+    (orderId == null || stored.orderId == null || String(stored.orderId) === String(orderId));
+
+  if (stored && sameOrder) {
+    const current = stored.deliveredAt ? new Date(stored.deliveredAt) : null;
+    if (current && !Number.isNaN(current.getTime()) && current.getTime() <= at.getTime()) return;
+    writeStored(storage, device, { ...stored, deliveredAt: iso });
+    return;
+  }
+  if (stored && !stored.endedAt) return;
+  writeStored(storage, device, { orderId, till: iso, seenAt: iso, endedAt: iso, deliveredAt: iso });
 }

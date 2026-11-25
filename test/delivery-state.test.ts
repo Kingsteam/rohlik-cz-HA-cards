@@ -483,6 +483,18 @@ describe("computeDeliveryState — live tracking (HA-RohlikCZ 1.3+)", () => {
     expect(view.tracking.phase).toBe("at_door");
   });
 
+  it("does not call a queued order delivered when is_ordered reads off", () => {
+    const view = computeDeliveryState(
+      baseInput({
+        isOrdered: false,
+        recentDelivery: memory({ endedAt: NOW }),
+        tracking: tracking({ status: "in_queue" }),
+      }),
+      NOW,
+    );
+    expect(view.state).toBe("ordered");
+  });
+
   it("behaves as before without tracking", () => {
     const view = computeDeliveryState(baseInput({ isOrdered: true, since: LATER }), NOW);
     expect(view.state).toBe("ordered");

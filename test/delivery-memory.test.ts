@@ -221,4 +221,34 @@ describe("recordDeliveredAt", () => {
     const memory = resolveDelivery(storage, DEVICE, new Date("2026-09-13T15:50:00Z"));
     expect(memory?.till).toEqual(TILL);
   });
+
+  it("writes a resolved record on a browser that never saw the order active", () => {
+    const storage = makeStorage();
+    recordDeliveredAt(storage, DEVICE, 7, DELIVERED);
+    const memory = loadRecentDelivery(storage, DEVICE);
+    expect(memory).toMatchObject({ orderId: 7, till: DELIVERED, endedAt: DELIVERED });
+  });
+
+  it("only moves the pinned time earlier (last_changed is re-stamped on reload)", () => {
+    const storage = makeStorage();
+    recordDeliveredAt(storage, DEVICE, 7, DELIVERED);
+    recordDeliveredAt(storage, DEVICE, 7, new Date("2026-09-13T15:55:00Z"));
+    expect(loadRecentDelivery(storage, DEVICE)?.till).toEqual(DELIVERED);
+  });
+
+  it("survives rememberActiveOrder rewriting the record every render", () => {
+    const storage = makeStorage();
+    rememberActiveOrder(storage, DEVICE, { orderId: 7, till: TILL }, DELIVERED);
+    recordDeliveredAt(storage, DEVICE, 7, DELIVERED);
+    rememberActiveOrder(storage, DEVICE, { orderId: 7, till: TILL }, DELIVERED);
+    const memory = resolveDelivery(storage, DEVICE, new Date("2026-09-13T15:50:00Z"));
+    expect(memory?.till).toEqual(DELIVERED);
+  });
+
+  it("replaces a finished older order but not an active one", () => {
+    const storage = makeStorage();
+    recordDeliveredAt(storage, DEVICE, 6, new Date("2026-09-12T10:00:00Z"));
+    recordDeliveredAt(storage, DEVICE, 7, DELIVERED);
+    expect(loadRecentDelivery(storage, DEVICE)?.orderId).toBe(7);
+  });
 });

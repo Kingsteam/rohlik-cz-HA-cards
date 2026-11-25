@@ -77,10 +77,17 @@ function syncMemory(
   orderData: DeliveryOrderData | null,
 ): RecentDeliveryMemory | null {
   const storage = getBrowserStorage();
+  const status = read("delivery_status");
+
+  // A queued order whose upcoming-orders poll failed reads `is_ordered` off;
+  // it has not been delivered, so don't resolve its memory.
+  if (read("is_ordered")?.state === "off" && status?.state === "in_queue") {
+    return loadRecentDelivery(storage, device);
+  }
+
   const memory = syncOrderMemory(storage, read, device, orderData);
 
   // Tracking knows the real delivery moment; keep it once the status expires.
-  const status = read("delivery_status");
   const deliveredAt = status?.state === "delivered" ? parseTs(status.last_changed) : null;
   if (deliveredAt) {
     const trackedId = status?.attributes?.order_id;
@@ -90,7 +97,7 @@ function syncMemory(
       typeof trackedId === "string" || typeof trackedId === "number" ? trackedId : null,
       deliveredAt,
     );
-    return memory ? loadRecentDelivery(storage, device) : null;
+    return read("is_ordered")?.state === "on" ? null : loadRecentDelivery(storage, device);
   }
   return memory;
 }
@@ -141,7 +148,9 @@ export function readDeliveryInput(read: EntityReader, device: string): DeliveryS
     isOrdered: read("is_ordered")?.state === "on",
     since: parseTs(read("next_order_since")?.state),
     till: parseTs(read("next_order_till")?.state),
-    eta: parseTs(read("delivery_time")?.state),
+    // With source `slot` the "ETA" is only the booked window start, not an
+    // estimate; treat it as unknown so the card says "by <till>" instead.
+    eta: etaSource === "slot" ? null : parseTs(read("delivery_time")?.state),
     orderData,
     announcementText: known(read("delivery_info")),
     announcementExtra: (attr("delivery_info", "Additional Content") as string | undefined) ?? null,

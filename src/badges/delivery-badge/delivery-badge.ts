@@ -174,7 +174,13 @@ export class RohlikDeliveryBadge extends LitElement {
   }
 
   private t(key: string, vars?: Record<string, string | number>): string {
-    return localize(this.hass, { ...coreStrings, ...strings }, key, vars);
+    // Merge per language: a shallow spread would drop coreStrings' cs/en
+    // entries ("today", "tomorrow", …) under the card dictionary's.
+    const merged: Record<string, Record<string, string>> = {};
+    for (const lng of new Set([...Object.keys(coreStrings), ...Object.keys(strings)])) {
+      merged[lng] = { ...coreStrings[lng], ...strings[lng] };
+    }
+    return localize(this.hass, merged, key, vars);
   }
 
   private deviceName(): string {

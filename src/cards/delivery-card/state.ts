@@ -224,6 +224,8 @@ function resolveState(input: DeliveryStateInput, now: Date): DeliveryStateKind {
   // and the "is_ordered went off" memory.
   if (matches && tracking?.status && MOVING.has(tracking.status)) return "arriving";
   if (matches && tracking?.courierAtDoor) return "arriving";
+  // Still queued although `is_ordered` reads off (a failed poll): not delivered.
+  if (!input.isOrdered && matches && tracking?.status === "in_queue") return "ordered";
   if (input.isOrdered) {
     if (input.since && now.getTime() >= input.since.getTime()) return "arriving";
     return "ordered";

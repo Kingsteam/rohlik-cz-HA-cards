@@ -333,7 +333,8 @@ export class RohlikDeliveryCard extends RohlikBaseCard<DeliveryCardConfig> {
         const parts = [this.t("estimated")];
         const source = view.tracking.etaSource;
         if (source && source !== "slot") parts.push(this.t(`source_${source}`));
-        if (view.eta.getTime() > Date.now()) parts.push(formatCountdown(this.hass, view.eta));
+        // The card re-renders every 30 s, so a seconds countdown would go stale.
+        if (view.eta.getTime() - Date.now() >= 60_000) parts.push(formatCountdown(this.hass, view.eta));
         return parts.join(" · ");
       }
       case "ordered":
