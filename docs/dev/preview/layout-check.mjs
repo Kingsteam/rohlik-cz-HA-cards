@@ -72,9 +72,11 @@ function scenarios() {
     for (const cart of ["empty", "many"]) {
       list.push({ pointer, width: 400, state: "arriving", lang: "cs", cart });
     }
-    for (const cart of ["default", "many"]) {
+    for (const cart of ["empty", "default", "many"]) {
       list.push({ pointer, width: 400, state: "arriving", lang: "cs", cart, rows: 4 });
     }
+    // The same fixed height set the pre-2024.11 way (layout_options.grid_rows).
+    list.push({ pointer, width: 400, state: "arriving", lang: "cs", cart: "many", rows: 4, legacy: true });
   }
   return list;
 }
@@ -106,25 +108,43 @@ function inspect(fixed) {
       if (Math.abs(host.height - c.height) > 1) {
         problems.push(`${tag}: does not fill its fixed cell (${round(host.height)}px in ${round(c.height)}px)`);
       }
+      if (!card.hasAttribute("fixed")) {
+        problems.push(`${tag}: in a fixed cell but not marked fixed`);
+      }
       // Everything must stay reachable: overflow is scrolled, never painted outside.
       const overflowY = getComputedStyle(haCard).overflowY;
       if (haCard.scrollHeight > haCard.clientHeight + 1 && !/auto|scroll/.test(overflowY)) {
-        // The cart keeps ha-card fixed and scrolls its list instead.
-        const lines = haCard.querySelector(".lines");
-        const listScrolls = lines && /auto|scroll/.test(getComputedStyle(lines).overflowY);
-        if (!listScrolls) problems.push(`${tag}: content cut off (${haCard.scrollHeight}px in ${haCard.clientHeight}px, not scrollable)`);
+        problems.push(`${tag}: content cut off (${haCard.scrollHeight}px in ${haCard.clientHeight}px, not scrollable)`);
+      }
+      // The card's last block (the footer) can be scrolled into view inside the cell.
+      const lastBlock = haCard.lastElementChild;
+      if (lastBlock) {
+        haCard.scrollTop = haCard.scrollHeight;
+        const r = lastBlock.getBoundingClientRect();
+        const h = haCard.getBoundingClientRect();
+        if (r.bottom > h.bottom + 1 || h.bottom > c.bottom + 1) {
+          problems.push(`${tag}: footer can't be scrolled into view (${round(r.bottom - h.bottom)}px below)`);
+        }
+        haCard.scrollTop = 0;
       }
       if (tag === "rohlik-cart-card") {
         const lines = haCard.querySelector(".lines");
         const last = lines?.lastElementChild;
         if (lines && last) {
+          // At least one line must be visible, not a 0 px list.
+          if (lines.clientHeight < last.getBoundingClientRect().height - 1) {
+            problems.push(`rohlik-cart-card: item list only ${lines.clientHeight}px tall (no line fits)`);
+          }
+          haCard.scrollTop = Math.max(0, lines.offsetTop - 8);
           lines.scrollTop = lines.scrollHeight;
           const l = lines.getBoundingClientRect();
           const r = last.getBoundingClientRect();
-          if (r.bottom > l.bottom + 1 || l.bottom > c.bottom + 1) {
+          const h = haCard.getBoundingClientRect();
+          if (r.bottom > l.bottom + 1 || r.bottom > h.bottom + 1 || r.top < h.top - 1) {
             problems.push(`rohlik-cart-card: last cart line can't be scrolled into view`);
           }
           lines.scrollTop = 0;
+          haCard.scrollTop = 0;
         }
       }
     } else {
@@ -173,6 +193,7 @@ async function main() {
         lang: s.lang,
         cart: s.cart,
         ...(s.rows ? { rows: String(s.rows) } : {}),
+        ...(s.legacy ? { legacy: "1" } : {}),
       });
       await page.goto(`http://127.0.0.1:${PORT}/docs/dev/preview/index.html?${query}`);
       await page.waitForFunction(
@@ -183,7 +204,7 @@ async function main() {
       await page.waitForTimeout(250);
       const initError = await page.evaluate(() => window.__PREVIEW_ERROR__ || null);
       const problems = initError ? [`preview failed: ${initError}`] : await page.evaluate(inspect, Boolean(s.rows));
-      const label = `${s.pointer} ${s.width}px ${s.state} ${s.lang} cart=${s.cart}${s.rows ? ` rows=${s.rows}` : ""}`;
+      const label = `${s.pointer} ${s.width}px ${s.state} ${s.lang} cart=${s.cart}${s.rows ? ` rows=${s.rows}` : ""}${s.legacy ? " (layout_options)" : ""}`;
       for (const p of [...problems, ...errors]) failures.push(`${label}: ${p}`);
       checked++;
       await context.close();

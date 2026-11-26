@@ -125,7 +125,9 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
   getGridOptions(): LovelaceGridOptions {
     // Content-sized: the list is capped by height (mouse) or item count
     // (touch) instead. A user-chosen fixed height scrolls the list inside.
-    return { columns: 12, rows: "auto", min_columns: 6, min_rows: 4 };
+    // min_rows 6: header, search and footer take ~250 px; a smaller fixed
+    // height would leave no room for the list.
+    return { columns: 12, rows: "auto", min_columns: 6, min_rows: 6 };
   }
 
   public disconnectedCallback(): void {
@@ -266,11 +268,14 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
    * Lines shown before "Show all (N)". An explicit `max_items` wins (0 =
    * all). Unset: all on mouse (the list scrolls within `list_max_height`),
    * `TOUCH_MAX_ITEMS` on touch, where the list can't scroll inside and a long
-   * cart would otherwise make a very tall card.
+   * cart would otherwise make a very tall card — unless `list_max_height: 0`
+   * asks for the whole list.
    */
   private effectiveMaxItems(): number {
     if (this.config.max_items != null) return this.config.max_items;
-    return this.isTouch() && !this.fixedHeight ? TOUCH_MAX_ITEMS : DEFAULT_MAX_ITEMS;
+    // `list_max_height: 0` has always meant "show the whole list"; keep that.
+    const unlimited = this.config.list_max_height != null && this.config.list_max_height <= 0;
+    return this.isTouch() && !this.fixedHeight && !unlimited ? TOUCH_MAX_ITEMS : DEFAULT_MAX_ITEMS;
   }
 
   private async ensureConfigEntryId(): Promise<string | undefined> {

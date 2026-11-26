@@ -82,7 +82,7 @@ export abstract class RohlikBaseCard<C extends RohlikCardConfig = RohlikCardConf
 
   /**
    * Set by HA's `hui-card`: `"grid"` in a sections view, `"panel"` in a panel
-   * view, `"masonry"` (or unset) elsewhere. Used to tell a user-chosen fixed
+   * view, unset in masonry views and stacks. Used to tell a user-chosen fixed
    * height apart from the default content-sized one.
    */
   @property({ attribute: false }) public layout?: string;
@@ -136,13 +136,13 @@ export abstract class RohlikBaseCard<C extends RohlikCardConfig = RohlikCardConf
   }
 
   /**
-   * Whether the card sits in a cell of fixed height: a panel view, or a
-   * sections view where the user picked a number of rows. Reflected as the
+   * Whether the card sits in a cell of fixed height: a sections view where
+   * the user picked a number of rows (see `core/layout.ts`). Reflected as the
    * `fixed` host attribute, which lets the card scroll inside instead of
    * spilling over its neighbours.
    */
   protected get fixedHeight(): boolean {
-    return isFixedHeight(this.layout, this.config?.grid_options);
+    return isFixedHeight(this.layout, this.config?.grid_options, this.config?.layout_options);
   }
 
   protected updated(changed: PropertyValues<this>): void {

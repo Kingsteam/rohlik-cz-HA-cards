@@ -41,8 +41,11 @@ Decisions already taken (do not re-open):
    numeric row count gives the cell a fixed height that HA neither clips nor scrolls,
    so the card either spills over the next card or leaves an empty band (issue #13).
    `:host` and `ha-card` are `height: 100%`, so a user-chosen fixed height (numeric
-   `grid_options.rows`, or a panel view) is filled; the base card then sets the `fixed`
-   host attribute and the card scrolls inside it (the cart scrolls its item list).
+   `grid_options.rows`, or the legacy `layout_options.grid_rows`, in a sections view —
+   `layout === "grid"`) is filled; the base card then sets the `fixed` host attribute
+   and the card scrolls inside it (the cart scrolls its item list, which keeps at least
+   ~2 lines; the cart's `min_rows` is 6). Masonry views, stacks and panel views stay
+   content-sized, even with stale `grid_options` (see `src/core/layout.ts`).
    Only the compact delivery card keeps fixed rows (one line, 2 rows). `getCardSize()`
    returns the rendered height in 50 px units (an estimate before first render); HA
    uses it for masonry columns and as the starting size when "auto height" is turned

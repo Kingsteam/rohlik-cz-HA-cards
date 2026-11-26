@@ -20,10 +20,12 @@ export const cartStyles = css`
     overflow-y: auto;
   }
 
-  /* User-chosen fixed height: the list is the one scroller (it fills the space
-     left by the header, search and footer); the card itself stays put. */
-  :host([fixed]) ha-card {
-    overflow: hidden;
+  /* User-chosen fixed height: the list takes the space left by the header,
+     search and footer and scrolls. It never shrinks below about two lines;
+     in a cell too small for that, the card itself scrolls (shared
+     :host([fixed]) ha-card rule) so every line and the footer stay reachable. */
+  :host([fixed]) .lines {
+    min-height: 120px;
   }
 
   .caption {

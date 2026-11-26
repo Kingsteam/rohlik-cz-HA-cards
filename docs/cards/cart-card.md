@@ -15,7 +15,7 @@ the cart.
 | `show_search`         | boolean | `true`  | Show the product search box. |
 | `group_by_category`   | boolean | `false` | Group cart lines under small uppercase category headers. |
 | `show_brand`          | boolean | `true`  | Show the brand in each line's secondary text. |
-| `max_items`           | number  | automatic | Lines to show before collapsing the rest behind "Show all N". Unset: every line on desktop (the list scrolls within `list_max_height`), 8 on touch devices. `0` shows every line everywhere. |
+| `max_items`           | number  | automatic | Lines to show before collapsing the rest behind "Show all N". Unset: every line on desktop (the list scrolls within `list_max_height`), 8 on touch devices (unless `list_max_height` is `0`). `0` shows every line everywhere. |
 | `list_max_height`     | number  | `360`   | Maximum height of the item list in px on pointer-fine (desktop) devices; beyond that the list scrolls inside the card. Ignored on touch devices, where the list can't scroll inside (it would swallow the swipe meant for the dashboard) and `max_items` keeps a long cart short instead. `0` = unlimited everywhere. |
 | `min_order`           | number  | shop minimum | Minimum order value in your account's currency. The card shows an "Above/Below minimum" chip and how much is missing; remaining Xtra no-limit orders count as above the minimum. Unset uses the shop's own minimum (`Minimum Order Price` on `cart_price`, HA-RohlikCZ 1.3+); `0` disables the check. |
 | `show_order_button`   | boolean | `true`  | Show the "Order" button in the footer that opens the Rohlík.cz cart. The button is enabled whenever the cart is not empty; Rohlík.cz enforces the real ordering rules at checkout. |
@@ -130,4 +130,4 @@ checkout_url: https://www.rohlik.cz/kosik
 
 ## Grid
 
-12 columns wide (minimum 6). In a sections dashboard the card is **as tall as its content** (`rows: "auto"`), so it never overlaps the card below or leaves an empty band. You can still pick a fixed height in the card's **Layout** tab: the card then fills that cell and scrolls inside it rather than spilling over. With a fixed height, the item list is what scrolls; the header, search and footer stay in place.
+12 columns wide (minimum 6). In a sections dashboard the card is **as tall as its content** (`rows: "auto"`), so it never overlaps the card below or leaves an empty band. You can still pick a fixed height in the card's **Layout** tab: the card then fills that cell and scrolls inside it rather than spilling over. With a fixed height (at least 6 rows), the item list is what scrolls and always shows at least two lines; if the cell is too small even for that, the whole card scrolls.

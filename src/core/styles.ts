@@ -11,8 +11,8 @@ export const sharedStyles = css`
     --rohlik-accent: var(--primary-color);
     display: block;
     /* Fill the grid cell when HA gives the card a fixed height (sections view
-       with numeric rows, panel view); in content-sized contexts (rows "auto",
-       masonry, sidebar) the parent's height is auto, so this computes to auto. */
+       with numeric rows); in content-sized contexts (rows "auto", masonry,
+       stacks) the parent's height is auto, so this computes to auto. */
     height: 100%;
     /* Lets cards adapt to their own width with @container queries. */
     container-type: inline-size;

@@ -142,6 +142,8 @@
       const sections = params.get("grid") === "sections";
       const sectionWidth = Number(params.get("width")) || 500;
       const forcedRows = params.has("rows") ? Number(params.get("rows")) : undefined;
+      // ?legacy=1: set the forced rows the pre-2024.11 way (layout_options).
+      const legacyLayout = params.get("legacy") === "1";
 
       document.documentElement.lang = lang;
       if (theme === "dark") document.body.setAttribute("data-theme", "dark");
@@ -194,14 +196,18 @@
             config.default_period = period;
           }
           if (forcedRows !== undefined) {
-            config.grid_options = { rows: forcedRows };
+            if (legacyLayout) config.layout_options = { grid_rows: forcedRows };
+            else config.grid_options = { rows: forcedRows };
           }
           el.setConfig(config);
           el.hass = hass;
           if (section) {
             // HA merges the card's own grid options with the user's.
             el.layout = "grid";
-            const options = { ...el.getGridOptions(), ...(config.grid_options || {}) };
+            // hui-card migrates layout_options when grid_options is absent.
+            const user = config.grid_options
+              ?? (config.layout_options ? { rows: config.layout_options.grid_rows } : {});
+            const options = { ...el.getGridOptions(), ...user };
             const rows = typeof options.rows === "number"
               ? Math.max(options.rows, options.min_rows ?? 0)
               : "auto";
