@@ -115,6 +115,11 @@ function inspect({ touch }) {
     const box = haCard.getBoundingClientRect();
     const round = (n) => Math.round(n);
 
+    // A compact delivery card must keep its headline readable at any width.
+    const compactBig = haCard.querySelector(".compact-row .big");
+    if (compactBig && compactBig.clientWidth < 30) {
+      problems.push(`${tag}: compact headline squeezed to ${compactBig.clientWidth}px`);
+    }
     if (haCard.scrollWidth > haCard.clientWidth + 1) {
       problems.push(`${tag}: content wider than the card (${haCard.scrollWidth}px in ${haCard.clientWidth}px)`);
     }
@@ -305,6 +310,15 @@ async function main() {
       await setScroll(600);
       await page.waitForTimeout(100);
       if (await popoverShown()) failures.push(`${label}: results drawn while the search box is scrolled out of the card`);
+      // Hidden results must not stay keyboard-active.
+      await page.locator("rohlik-cart-card").locator("input").first().press("ArrowDown");
+      const aria = await page.evaluate(() => {
+        const input = document.querySelector("rohlik-cart-card").shadowRoot.querySelector("input");
+        return { expanded: input.getAttribute("aria-expanded"), active: input.getAttribute("aria-activedescendant") };
+      });
+      if (aria.expanded !== "false" || aria.active) {
+        failures.push(`${label}: hidden results still keyboard-active (aria-expanded=${aria.expanded}, activedescendant=${aria.active})`);
+      }
       await setScroll(0);
       await page.waitForTimeout(100);
       if (!(await popoverShown())) failures.push(`${label}: results don't come back when the search box scrolls back`);

@@ -123,9 +123,10 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
   }
 
   protected estimatedCardSize(): number {
-    // Header, total, search and footer ≈ 5 units; about one unit per shown
-    // line, up to what the desktop list cap shows.
-    return Math.min(12, 5 + this.lines.length);
+    // Constant on purpose: the item list loads asynchronously, and a size
+    // that changes after load can move the card between masonry columns.
+    // ~10 units sits between an empty cart (~5) and a capped list (~12).
+    return 10;
   }
 
   getGridOptions(): LovelaceGridOptions {
@@ -188,9 +189,18 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
     // A fixed-height card scrolls itself: while the search box is outside
     // the card's visible area, hide the results instead of drawing them over
     // the neighbouring cards; they come back when it scrolls back into view.
+    // The results hang from the box's bottom edge, so that edge decides.
     const card = this.scrollingCard?.getBoundingClientRect();
-    this.popoverOutOfView = !!card && (rect.bottom < card.top || rect.top > card.bottom);
+    this.popoverOutOfView = !!card && (rect.bottom < card.top || rect.bottom > card.bottom);
+    // Hidden results must not stay keyboard-active (Enter would add an
+    // item the user can't see).
+    if (this.popoverOutOfView) this.highlightedIndex = -1;
     this.popoverRect = { left: rect.left, top: rect.bottom + 4, width: rect.width };
+  }
+
+  /** Results are open and on screen (not hidden by a scrolled-away search box). */
+  private get resultsVisible(): boolean {
+    return this.popoverOpen && !this.popoverOutOfView;
   }
 
   /** Opens the popover and (re)computes its position — safe to call repeatedly. */
@@ -420,13 +430,13 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
       return;
     }
     if (ev.key === "ArrowDown") {
-      if (!this.popoverOpen || !this.searchResults.length) return;
+      if (!this.resultsVisible || !this.searchResults.length) return;
       ev.preventDefault();
       this.highlightedIndex = moveHighlight(this.highlightedIndex, 1, this.searchResults.length);
       return;
     }
     if (ev.key === "ArrowUp") {
-      if (!this.popoverOpen || !this.searchResults.length) return;
+      if (!this.resultsVisible || !this.searchResults.length) return;
       ev.preventDefault();
       this.highlightedIndex = moveHighlight(this.highlightedIndex, -1, this.searchResults.length);
       return;
@@ -659,10 +669,10 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
           <input
             type="text"
             role="combobox"
-            aria-expanded=${this.popoverOpen ? "true" : "false"}
+            aria-expanded=${this.resultsVisible ? "true" : "false"}
             aria-controls="cart-search-listbox"
             aria-autocomplete="list"
-            aria-activedescendant=${this.highlightedIndex >= 0
+            aria-activedescendant=${this.resultsVisible && this.highlightedIndex >= 0
               ? `cart-search-option-${this.highlightedIndex}`
               : nothing}
             .value=${this.searchQuery}
@@ -680,7 +690,7 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
             <ha-icon icon=${this.favouriteOnly ? "mdi:heart" : "mdi:heart-outline"}></ha-icon>
           </button>
         </div>
-        ${this.popoverOpen && !this.popoverOutOfView ? this.renderSearchPopover() : nothing}
+        ${this.resultsVisible ? this.renderSearchPopover() : nothing}
       </div>
     `;
   }

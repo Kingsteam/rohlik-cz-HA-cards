@@ -17,7 +17,6 @@ export const sharedStyles = css`
   ha-card {
     display: flex;
     flex-direction: column;
-    height: 100%;
     padding: var(--ha-space-4, 16px);
     box-sizing: border-box;
     /* NOT a scroll container by default. On touch, a scrollable card eats
@@ -32,7 +31,9 @@ export const sharedStyles = css`
      (masonry, stacks) the card keeps its content height, so a parent that
      sets a height (e.g. a horizontal stack) can never squeeze it. */
   :host([fixed]),
-  :host([in-grid]) {
+  :host([in-grid]),
+  :host([fixed]) ha-card,
+  :host([in-grid]) ha-card {
     height: 100%;
   }
 

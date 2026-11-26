@@ -319,7 +319,9 @@ export const deliveryCardStyles = css`
   /* On a narrow compact card the chip gives way (ellipsis) instead of
      pushing the row wider than the card. */
   .compact-row .chip {
-    flex-shrink: 1;
+    /* Block (not inline-flex), so text-overflow: ellipsis applies. */
+    display: block;
+    flex: 0 1 auto;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -338,8 +340,11 @@ export const deliveryCardStyles = css`
     flex-shrink: 0;
   }
 
+  /* The headline (the time) keeps priority over the chip on a narrow card:
+     it shrinks only down to a readable floor, the chip gives way first. */
   .compact-row .headline {
-    flex: 1;
+    flex: 1 1 auto;
+    min-width: 3.5em;
     margin: 0;
     overflow: hidden;
   }
