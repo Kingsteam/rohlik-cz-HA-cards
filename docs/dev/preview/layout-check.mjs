@@ -75,6 +75,12 @@ function scenarios() {
     for (const cart of ["empty", "default", "many"]) {
       list.push({ pointer, width: 400, state: "arriving", lang: "cs", cart, rows: 4 });
     }
+    // Other fixed heights and widths: rows 4 is clamped to each card's
+    // min_rows (6 for the cart), rows 8 is the old cart default.
+    for (const width of [300, 500]) {
+      list.push({ pointer, width, state: "arriving", lang: "cs", cart: "default", rows: 4 });
+    }
+    list.push({ pointer, width: 400, state: "none", lang: "en", cart: "many", rows: 8 });
     // The same fixed height set the pre-2024.11 way (layout_options.grid_rows).
     list.push({ pointer, width: 400, state: "arriving", lang: "cs", cart: "many", rows: 4, legacy: true });
   }
@@ -82,7 +88,7 @@ function scenarios() {
 }
 
 /** Runs in the page: measures every card cell and returns problems found. */
-function inspect(fixed) {
+function inspect({ fixed, touch }) {
   const problems = [];
   const cells = [...document.querySelectorAll("#ha-section .card")];
   if (cells.length === 0) return ["no cards rendered in the sections replica"];
@@ -111,6 +117,26 @@ function inspect(fixed) {
       if (!card.hasAttribute("fixed")) {
         problems.push(`${tag}: in a fixed cell but not marked fixed`);
       }
+      // No block may be squeezed below its content (a scrolling flex column
+      // shrinks blocks that clip their own overflow to 0 px). The cart's list
+      // is the one block meant to shrink and scroll.
+      for (const child of haCard.children) {
+        if (child.classList.contains("lines")) continue;
+        if (child.scrollHeight > child.offsetHeight + 1) {
+          problems.push(`${tag}: .${[...child.classList].join(".") || child.tagName.toLowerCase()} squeezed to ${child.offsetHeight}px (content ${child.scrollHeight}px)`);
+        }
+      }
+      // On touch the card itself may scroll, but nothing inside it: a nested
+      // scroller swallows the swipe meant for the dashboard (PR #11).
+      if (touch) {
+        for (const el of haCard.querySelectorAll("*")) {
+          const cs = getComputedStyle(el);
+          if (cs.position === "fixed") continue;
+          if (/auto|scroll/.test(cs.overflowY) && el.scrollHeight > el.clientHeight + 1) {
+            problems.push(`${tag}: nested vertical scroller on touch (.${[...el.classList].join(".")})`);
+          }
+        }
+      }
       // Everything must stay reachable: overflow is scrolled, never painted outside.
       const overflowY = getComputedStyle(haCard).overflowY;
       if (haCard.scrollHeight > haCard.clientHeight + 1 && !/auto|scroll/.test(overflowY)) {
@@ -135,8 +161,9 @@ function inspect(fixed) {
           if (lines.clientHeight < last.getBoundingClientRect().height - 1) {
             problems.push(`rohlik-cart-card: item list only ${lines.clientHeight}px tall (no line fits)`);
           }
-          haCard.scrollTop = Math.max(0, lines.offsetTop - 8);
-          lines.scrollTop = lines.scrollHeight;
+          // Reach it the way a user would: whichever of the list and the card
+          // scrolls (on touch only the card does) scrolls it into view.
+          last.scrollIntoView({ block: "nearest" });
           const l = lines.getBoundingClientRect();
           const r = last.getBoundingClientRect();
           const h = haCard.getBoundingClientRect();
@@ -157,15 +184,20 @@ function inspect(fixed) {
     }
   });
 
-  // No two cells may overlap.
-  for (let a = 0; a < rects.length; a++) {
-    for (let b = a + 1; b < rects.length; b++) {
-      const r1 = rects[a];
-      const r2 = rects[b];
-      const overlap = r1.left < r2.right - 1 && r2.left < r1.right - 1 && r1.top < r2.bottom - 1 && r2.top < r1.bottom - 1;
-      if (overlap) problems.push(`${cells[a].dataset.tag} and ${cells[b].dataset.tag} cells overlap`);
-    }
-  }
+  // No card may paint over another card's cell. Re-measure: the reachability
+  // checks above may have scrolled the page.
+  window.scrollTo(0, 0);
+  const cellRects = cells.map((cell) => cell.getBoundingClientRect());
+  cells.forEach((cell, a) => {
+    const haCard = cell.querySelector(cell.dataset.tag)?.shadowRoot?.querySelector("ha-card");
+    if (!haCard) return;
+    const box = haCard.getBoundingClientRect();
+    cellRects.forEach((r2, b) => {
+      if (a === b) return;
+      const overlap = box.left < r2.right - 1 && r2.left < box.right - 1 && box.top < r2.bottom - 1 && r2.top < box.bottom - 1;
+      if (overlap) problems.push(`${cell.dataset.tag} paints over ${cells[b].dataset.tag}`);
+    });
+  });
   return problems;
 }
 
@@ -200,10 +232,16 @@ async function main() {
         () => window.__PREVIEW_READY__ === true || typeof window.__PREVIEW_ERROR__ === "string",
         { timeout: 15000 },
       );
-      // Let the cart's todo list load and re-render.
-      await page.waitForTimeout(250);
+      // Wait for the cart's todo list to load and render (no fixed sleep).
+      if (s.cart !== "empty") {
+        await page.waitForFunction(
+          () => !!document.querySelector("rohlik-cart-card")?.shadowRoot?.querySelector(".lines .line, .lines > *"),
+          { timeout: 10000 },
+        );
+      }
+      await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
       const initError = await page.evaluate(() => window.__PREVIEW_ERROR__ || null);
-      const problems = initError ? [`preview failed: ${initError}`] : await page.evaluate(inspect, Boolean(s.rows));
+      const problems = initError ? [`preview failed: ${initError}`] : await page.evaluate(inspect, { fixed: Boolean(s.rows), touch: s.pointer === "touch" });
       const label = `${s.pointer} ${s.width}px ${s.state} ${s.lang} cart=${s.cart}${s.rows ? ` rows=${s.rows}` : ""}${s.legacy ? " (layout_options)" : ""}`;
       for (const p of [...problems, ...errors]) failures.push(`${label}: ${p}`);
       checked++;

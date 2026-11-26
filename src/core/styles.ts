@@ -10,10 +10,6 @@ export const sharedStyles = css`
   :host {
     --rohlik-accent: var(--primary-color);
     display: block;
-    /* Fill the grid cell when HA gives the card a fixed height (sections view
-       with numeric rows); in content-sized contexts (rows "auto", masonry,
-       stacks) the parent's height is auto, so this computes to auto. */
-    height: 100%;
     /* Lets cards adapt to their own width with @container queries. */
     container-type: inline-size;
   }
@@ -30,9 +26,24 @@ export const sharedStyles = css`
   }
 
   /* Only when the user picked a fixed height (see RohlikBaseCard.fixedHeight):
-     scroll inside rather than paint over the next card. */
+     fill the cell and scroll inside rather than paint over the next card.
+     Elsewhere (rows "auto", masonry, stacks) the card keeps its content
+     height, so a parent that sets a height (e.g. a horizontal stack) can
+     never squeeze it. */
+  :host([fixed]) {
+    height: 100%;
+  }
+
   :host([fixed]) ha-card {
     overflow-y: auto;
+  }
+
+  /* In a scrolling flex column, blocks that clip their own overflow (chip
+     rows, progress tracks) would shrink to 0 px; keep every block at its
+     content height and let the card scroll instead. The cart's item list is
+     the one exception (cart-card/styles.ts). */
+  :host([fixed]) ha-card > * {
+    flex-shrink: 0;
   }
 
   .header {

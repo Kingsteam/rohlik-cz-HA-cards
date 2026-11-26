@@ -267,15 +267,15 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
   /**
    * Lines shown before "Show all (N)". An explicit `max_items` wins (0 =
    * all). Unset: all on mouse (the list scrolls within `list_max_height`),
-   * `TOUCH_MAX_ITEMS` on touch, where the list can't scroll inside and a long
-   * cart would otherwise make a very tall card — unless `list_max_height: 0`
-   * asks for the whole list.
+   * `TOUCH_MAX_ITEMS` on touch — also with a fixed card height — where the
+   * list never scrolls on its own and a long cart would otherwise make a very
+   * tall card; `list_max_height: 0` asks for the whole list.
    */
   private effectiveMaxItems(): number {
     if (this.config.max_items != null) return this.config.max_items;
     // `list_max_height: 0` has always meant "show the whole list"; keep that.
     const unlimited = this.config.list_max_height != null && this.config.list_max_height <= 0;
-    return this.isTouch() && !this.fixedHeight && !unlimited ? TOUCH_MAX_ITEMS : DEFAULT_MAX_ITEMS;
+    return this.isTouch() && !unlimited ? TOUCH_MAX_ITEMS : DEFAULT_MAX_ITEMS;
   }
 
   private async ensureConfigEntryId(): Promise<string | undefined> {

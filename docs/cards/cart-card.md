@@ -130,4 +130,4 @@ checkout_url: https://www.rohlik.cz/kosik
 
 ## Grid
 
-12 columns wide (minimum 6). In a sections dashboard the card is **as tall as its content** (`rows: "auto"`), so it never overlaps the card below or leaves an empty band. You can still pick a fixed height in the card's **Layout** tab: the card then fills that cell and scrolls inside it rather than spilling over. With a fixed height (at least 6 rows), the item list is what scrolls and always shows at least two lines; if the cell is too small even for that, the whole card scrolls.
+12 columns wide (minimum 6). In a sections dashboard the card is **as tall as its content** (`rows: "auto"`), so it never overlaps the card below or leaves an empty band. You can still pick a fixed height in the card's **Layout** tab: the card then fills that cell and scrolls inside it rather than spilling over. With a fixed height (at least 6 rows), on desktop the item list is what scrolls and always shows at least two lines; if the cell is too small even for that, the whole card scrolls. On touch devices only the card scrolls (an inner scroll region would catch swipes meant for the dashboard) and the list keeps the 8-item limit.

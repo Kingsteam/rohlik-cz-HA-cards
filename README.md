@@ -56,6 +56,14 @@ On Home Assistant 2026.6 or newer, the cards are also suggested in the card pick
 you add a card for a Rohlík entity (for example the Delivery Status sensor suggests the
 Next Delivery card), already set to that account.
 
+In a sections dashboard every card is as tall as its content, so cards never overlap or
+leave empty space. **Upgrading from 0.2.0 or older:** if you ever resized a card (even
+just its width by clicking the size grid), a fixed height may be saved in its layout.
+Open the card's **Layout** tab and switch **auto height** back on. A card kept at a
+fixed height scrolls inside it instead of overlapping its neighbours. On phones and
+tablets the cart now shows its first 8 items with "Show all"; set **Max items** to `0`
+to always list everything.
+
 ### Next Delivery — `rohlik-delivery-card`
 
 <img src="docs/images/delivery-card.png?v=0.2.1-layout" alt="Next Delivery card while the courier is on the way" width="480">

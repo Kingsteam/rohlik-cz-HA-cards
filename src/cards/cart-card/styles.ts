@@ -24,8 +24,20 @@ export const cartStyles = css`
      search and footer and scrolls. It never shrinks below about two lines;
      in a cell too small for that, the card itself scrolls (shared
      :host([fixed]) ha-card rule) so every line and the footer stay reachable. */
-  :host([fixed]) .lines {
+  :host([fixed]) ha-card > .lines {
+    flex-shrink: 1;
     min-height: 120px;
+  }
+
+  /* On touch, an inner scroll region swallows the swipe meant for the
+     dashboard (PR #11): with a fixed height the list doesn't scroll on its
+     own there, the 8-item cap keeps it short and only the card scrolls. */
+  @media (pointer: coarse) {
+    :host([fixed]) ha-card > .lines {
+      flex-shrink: 0;
+      min-height: auto;
+      overflow-y: visible;
+    }
   }
 
   .caption {

@@ -40,12 +40,16 @@ Decisions already taken (do not re-open):
    (`rows: "auto"`): their height varies with state, data, language and width, and a
    numeric row count gives the cell a fixed height that HA neither clips nor scrolls,
    so the card either spills over the next card or leaves an empty band (issue #13).
-   `:host` and `ha-card` are `height: 100%`, so a user-chosen fixed height (numeric
-   `grid_options.rows`, or the legacy `layout_options.grid_rows`, in a sections view —
-   `layout === "grid"`) is filled; the base card then sets the `fixed` host attribute
-   and the card scrolls inside it (the cart scrolls its item list, which keeps at least
-   ~2 lines; the cart's `min_rows` is 6). Masonry views, stacks and panel views stay
-   content-sized, even with stale `grid_options` (see `src/core/layout.ts`).
+   A user-chosen fixed height (numeric `grid_options.rows`, or the legacy
+   `layout_options.grid_rows`, in a sections view — `layout === "grid"`) sets the
+   `fixed` host attribute (see `src/core/layout.ts`); only then are `:host` and
+   `ha-card` `height: 100%`, so the card fills its cell and scrolls inside it, with
+   every block kept at its content height (`flex-shrink: 0`). On mouse the cart's item
+   list is the one block that shrinks and scrolls (at least ~2 lines; cart `min_rows`
+   is 6); on touch nothing inside the card scrolls on its own (PR #11), only the card,
+   and the 8-item cap keeps it short. Without `fixed` (rows "auto", masonry, stacks,
+   panel views, stale `grid_options` outside sections) the card keeps its content
+   height, so a parent that sets a height can't squeeze it.
    Only the compact delivery card keeps fixed rows (one line, 2 rows). `getCardSize()`
    returns the rendered height in 50 px units (an estimate before first render); HA
    uses it for masonry columns and as the starting size when "auto height" is turned
