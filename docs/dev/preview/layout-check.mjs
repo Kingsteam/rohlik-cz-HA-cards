@@ -365,29 +365,53 @@ async function main() {
         if (slotsHa.scrollHeight > slotsHa.clientHeight + 1) {
           found.push(`rohlik-slots-card: squeezed by a 200px parent (${slotsHa.scrollHeight}px in ${slotsHa.clientHeight}px)`);
         }
-        // A horizontal stack inside a fixed 4-row sections cell (HA doesn't
-        // pass layout to nested cards): the cart must stay inside the cell
-        // and scroll, not paint over the cells below.
-        const cell = document.createElement("div");
-        cell.className = "card fit-rows";
-        cell.style.cssText = "display:block;height:248px;width:600px";
-        const stack = document.createElement("div");
-        stack.style.cssText = "display:flex;height:100%";
-        const cartWrapper = document.createElement("hui-card");
-        cartWrapper.style.cssText = "flex:1 1 0;min-width:0";
+        // Replicas of HA's stack cards (hui-horizontal-stack-card.ts /
+        // hui-vertical-stack-card.ts) inside a fixed 4-row sections cell; HA
+        // doesn't pass layout to nested cards.
+        const makeCell = (stackTag, horizontal) => {
+          const cell = document.createElement("div");
+          cell.className = "card fit-rows";
+          cell.style.cssText = "display:block;height:248px;width:600px";
+          const stack = document.createElement(stackTag);
+          stack.style.cssText = horizontal
+            ? "display:flex;flex-direction:column;height:100%"
+            : "display:block";
+          const root = document.createElement("div");
+          root.style.cssText = horizontal
+            ? "display:flex;flex:1;min-height:0;gap:8px"
+            : "display:flex;flex-direction:column;gap:8px";
+          const wrapper = document.createElement("hui-card");
+          if (horizontal) wrapper.style.display = "contents";
+          root.appendChild(wrapper);
+          stack.appendChild(root);
+          cell.appendChild(stack);
+          document.body.prepend(cell);
+          return { cell, wrapper };
+        };
         const cart = document.getElementById("rohlik-cart-card").firstElementChild;
-        cartWrapper.appendChild(cart);
-        stack.appendChild(cartWrapper);
-        cell.appendChild(stack);
-        document.body.prepend(cell);
-        cart.requestUpdate();
-        await cart.updateComplete;
-        const cartHa = cart.shadowRoot.querySelector("ha-card");
-        const c = cell.getBoundingClientRect();
-        const h = cartHa.getBoundingClientRect();
-        if (!cart.hasAttribute("fixed")) found.push("rohlik-cart-card: in a stack in a fixed cell but not marked fixed");
-        if (h.bottom > c.bottom + 1) {
-          found.push(`rohlik-cart-card: in a stack in a fixed cell, spills ${Math.round(h.bottom - c.bottom)}px below it`);
+        // Horizontal stack: the card gets the cell height, must scroll inside it.
+        {
+          const { cell, wrapper } = makeCell("hui-horizontal-stack-card", true);
+          cart.style.cssText = "flex:1 1 0;min-width:0";
+          wrapper.appendChild(cart);
+          cart.requestUpdate();
+          await cart.updateComplete;
+          const h = cart.shadowRoot.querySelector("ha-card").getBoundingClientRect();
+          const c = cell.getBoundingClientRect();
+          if (!cart.hasAttribute("fixed")) found.push("rohlik-cart-card: in a horizontal stack in a fixed cell but not marked fixed");
+          if (h.bottom > c.bottom + 1) found.push(`rohlik-cart-card: in a horizontal stack in a fixed cell, spills ${Math.round(h.bottom - c.bottom)}px below it`);
+        }
+        // Vertical stack: no height to fill; the card stays content-sized and
+        // keeps its desktop list cap (like HA's own cards there).
+        {
+          const { wrapper } = makeCell("hui-vertical-stack-card", false);
+          cart.style.cssText = "";
+          wrapper.appendChild(cart);
+          cart.requestUpdate();
+          await cart.updateComplete;
+          if (cart.hasAttribute("fixed")) found.push("rohlik-cart-card: in a vertical stack marked fixed (it can't fill or scroll there)");
+          const lines = cart.shadowRoot.querySelector(".lines");
+          if (lines && lines.clientHeight > 400) found.push(`rohlik-cart-card: in a vertical stack the list lost its cap (${lines.clientHeight}px)`);
         }
         return found;
       });

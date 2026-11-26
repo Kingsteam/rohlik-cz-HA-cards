@@ -364,6 +364,14 @@ export const deliveryCardStyles = css`
     }
   }
 
+  /* A default 6-column compact card in a narrow section: a slightly smaller
+     headline keeps "Tomorrow 06:00" whole. */
+  @container (max-width: 220px) {
+    .compact-row .big {
+      font-size: 1.1rem;
+    }
+  }
+
   /* :host sets container-type: inline-size (core/styles.ts) — this queries
      the card's own rendered width, not the viewport, so it also kicks in
      for a narrow column in a dashboard grid, not just a phone screen. */

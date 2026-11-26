@@ -138,6 +138,9 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
   public disconnectedCallback(): void {
     super.disconnectedCallback();
     if (this.searchDebounce) clearTimeout(this.searchDebounce);
+    // Close, not just detach: re-attached with popoverOpen still true the
+    // results would stick without their listeners.
+    this.closePopover();
     this.detachPopoverListeners();
   }
 
@@ -192,14 +195,7 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
     // The results hang from the box's bottom edge, so that edge decides.
     // Only a fixed-height card scrolls itself; query it fresh (a re-render
     // can replace the ha-card element).
-    const current = this.renderRoot.querySelector<HTMLElement>("ha-card") ?? undefined;
-    if (current !== this.scrollingCard) {
-      // Re-rendered (e.g. entities went missing and came back): move the
-      // card-scroll listener to the new ha-card.
-      this.scrollingCard?.removeEventListener("scroll", this.onWindowReposition);
-      this.scrollingCard = current;
-      this.scrollingCard?.addEventListener("scroll", this.onWindowReposition, { passive: true });
-    }
+    const current = this.syncScrollingCard();
     const haCard = this.fixedHeight ? current : null;
     const card = haCard?.getBoundingClientRect();
     this.popoverOutOfView = !!card && (rect.bottom < card.top || rect.bottom > card.bottom);
@@ -207,6 +203,25 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
     // item the user can't see).
     if (this.popoverOutOfView) this.highlightedIndex = -1;
     this.popoverRect = { left: rect.left, top: rect.bottom + 4, width: rect.width };
+  }
+
+  /**
+   * Keeps the card-scroll listener on the current ha-card: a re-render (e.g.
+   * entities missing and back) can replace the element while results are open.
+   */
+  private syncScrollingCard(): HTMLElement | undefined {
+    const current = this.renderRoot.querySelector<HTMLElement>("ha-card") ?? undefined;
+    if (this.popoverListenersAttached && current !== this.scrollingCard) {
+      this.scrollingCard?.removeEventListener("scroll", this.onWindowReposition);
+      this.scrollingCard = current;
+      this.scrollingCard?.addEventListener("scroll", this.onWindowReposition, { passive: true });
+    }
+    return current;
+  }
+
+  protected updated(changed: PropertyValues<this>): void {
+    super.updated(changed);
+    if (this.popoverOpen) this.syncScrollingCard();
   }
 
   /** Results are open and on screen (not hidden by a scrolled-away search box). */
@@ -218,7 +233,24 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
   private openPopover(): void {
     this.attachPopoverListeners();
     this.popoverOpen = true;
+    this.revealSearchBox();
     this.positionPopover();
+  }
+
+  /**
+   * In a short fixed-height card the search box can sit partly below the
+   * card's visible area; scroll the card (not the page) so the box and the
+   * results hanging from it are in view.
+   */
+  private revealSearchBox(): void {
+    if (!this.fixedHeight) return;
+    const box = this.searchBoxEl;
+    const card = this.renderRoot.querySelector<HTMLElement>("ha-card");
+    if (!box || !card) return;
+    const b = box.getBoundingClientRect();
+    const c = card.getBoundingClientRect();
+    if (b.bottom > c.bottom) card.scrollTop += b.bottom - c.bottom + 4;
+    else if (b.top < c.top) card.scrollTop -= c.top - b.top + 4;
   }
 
   private closePopover(): void {
@@ -454,9 +486,13 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
     }
     if (ev.key === "Enter") {
       ev.preventDefault();
-      // Results hidden by a scrolled-away search box: do nothing rather than
-      // add an item the user can't see.
-      if (this.popoverOpen && this.popoverOutOfView) return;
+      // Results hidden by a scrolled-away search box: bring the box back into
+      // view and show them, rather than add an item the user can't see.
+      if (this.popoverOpen && this.popoverOutOfView) {
+        this.revealSearchBox();
+        this.positionPopover();
+        return;
+      }
       const highlighted =
         this.highlightedIndex >= 0 ? this.searchResults[this.highlightedIndex] : undefined;
       if (highlighted) {

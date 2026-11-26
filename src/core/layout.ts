@@ -32,11 +32,19 @@ export function isFixedHeight(
 }
 
 /**
+ * Wrappers that stack their cards and give each one only its content height
+ * (no definite height to fill): a card inside one is content-sized even in
+ * a fixed cell, exactly like HA's own cards there.
+ */
+const CONTENT_SIZED_WRAPPERS = new Set(["hui-vertical-stack-card", "hui-grid-card"]);
+
+/**
  * Whether `el` sits inside a fixed-height sections cell through a wrapper
- * that doesn't pass `layout` on (horizontal/vertical stack, grid card,
- * conditional card). HA marks such a cell `.card.fit-rows`
- * (hui-grid-section.ts). Walks the composed tree a bounded number of steps
- * and stops at the section itself.
+ * that doesn't pass `layout` on but does pass the cell height down
+ * (horizontal stack, conditional card). HA marks such a cell
+ * `.card.fit-rows` (hui-grid-section.ts). A vertical stack or grid card on
+ * the way makes the card content-sized instead. Walks the composed tree a
+ * bounded number of steps and stops at the section itself.
  */
 export function insideFixedSectionCell(el: Element, maxSteps = 24): boolean {
   let node: Node | null = el.parentNode;
@@ -44,6 +52,7 @@ export function insideFixedSectionCell(el: Element, maxSteps = 24): boolean {
     if (node instanceof Element) {
       if (node.classList.contains("card") && node.classList.contains("fit-rows")) return true;
       const tag = node.tagName.toLowerCase();
+      if (CONTENT_SIZED_WRAPPERS.has(tag)) return false;
       if (tag === "hui-grid-section" || tag === "hui-section" || tag === "body") return false;
     }
     node = node instanceof ShadowRoot ? node.host : node.parentNode;
