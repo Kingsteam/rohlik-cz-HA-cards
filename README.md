@@ -57,8 +57,8 @@ you add a card for a Rohlík entity (for example the Delivery Status sensor sugg
 Next Delivery card), already set to that account.
 
 In a sections dashboard every card is as tall as its content, so cards no longer overlap
-or reserve empty room below themselves (two cards side by side still follow the taller
-one, as with any card). **Upgrading from 0.2.0 or older:** if you ever resized a card
+or reserve empty room below themselves (two cards side by side both stretch to the
+taller one, like Home Assistant's own cards). **Upgrading from 0.2.0 or older:** if you ever resized a card
 (even just its width by clicking the size grid), a fixed height may be saved in its
 layout. Open the card's **Layout** tab and turn **Use recommended size** back on (or
 **Fit height to content**). A card kept at a fixed height scrolls inside it instead of

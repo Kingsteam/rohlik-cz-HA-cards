@@ -145,6 +145,10 @@
       // ?legacy=1: set the forced rows the pre-2024.11 way (layout_options).
       const legacyLayout = params.get("legacy") === "1";
       const compactDelivery = params.get("compact") === "1";
+      // ?pair=1: the slots card at half width, sharing a row with the account card.
+      const pairRow = params.get("pair") === "1";
+      // ?compactcols=12: compact delivery with only a user-chosen width.
+      const compactCols = params.has("compactcols") ? Number(params.get("compactcols")) : undefined;
 
       document.documentElement.lang = lang;
       if (theme === "dark") document.body.setAttribute("data-theme", "dark");
@@ -195,6 +199,10 @@
           }
           if (tag === "rohlik-delivery-card" && compactDelivery) {
             config.compact = true;
+            if (compactCols !== undefined) config.grid_options = { columns: compactCols };
+          }
+          if (tag === "rohlik-slots-card" && pairRow) {
+            config.grid_options = { columns: 6 };
           }
           if (tag === "rohlik-spending-card" && period) {
             config.default_period = period;

@@ -21,18 +21,21 @@ export const cartStyles = css`
   }
 
   /* User-chosen fixed height: the list takes the space left by the header,
-     search and footer and scrolls. It never shrinks below about two lines;
+     search and footer and scrolls. It never shrinks below about two lines
+     (180 px);
      in a cell too small for that, the card itself scrolls (shared
      :host([fixed]) ha-card rule) so every line and the footer stay reachable. */
   :host([fixed]) ha-card > .lines {
     flex-shrink: 1;
-    min-height: 120px;
+    /* About two lines even on a narrow card (~89 px per stacked line). */
+    min-height: 180px;
   }
 
   /* A collapsed list ("Show all (N)" below it) must not stretch into the spare
      height of a tall cell, or the button drifts away from the last line. */
   :host([fixed]) ha-card > .lines:has(+ .show-toggle) {
     flex-grow: 0;
+    min-height: 0;
   }
 
   /* On touch, an inner scroll region swallows the swipe meant for the

@@ -309,6 +309,11 @@ export const deliveryCardStyles = css`
     }
   }
 
+  /* The compact card fills its 2-row cell; keep its single line centred. */
+  :host([fixed]) .compact-row {
+    margin-block: auto;
+  }
+
   .compact-row {
     display: flex;
     align-items: center;

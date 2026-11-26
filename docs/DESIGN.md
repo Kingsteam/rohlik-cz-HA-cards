@@ -50,7 +50,11 @@ Decisions already taken (do not re-open):
    and the 8-item cap keeps it short. Without `fixed` (rows "auto", masonry, stacks,
    panel views, stale `grid_options` outside sections) the card keeps its content
    height, so a parent that sets a height can't squeeze it.
-   A card's own fixed default (compact delivery, 2 rows) counts as fixed too. Known
+   A card's own fixed default (compact delivery, 2 rows) counts as fixed too: like HA,
+   the user's grid options are merged over the card's own. In a sections view every
+   card (`in-grid` attribute) fills its cell, so cards sharing a row stretch to the
+   tallest, like HA's built-in cards; on touch a fixed card still scrolls itself (the
+   alternative is painting over its neighbours), which the README upgrade note covers. Known
    limitation: inside a conditional card HA doesn't pass `layout` on, so rows set on the
    conditional can't be detected and the card stays content-sized.
    Only the compact delivery card keeps fixed rows (one line, 2 rows). `getCardSize()`

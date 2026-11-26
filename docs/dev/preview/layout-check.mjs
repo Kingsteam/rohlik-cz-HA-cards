@@ -83,6 +83,10 @@ function scenarios() {
     list.push({ pointer, width: 400, state: "none", lang: "en", cart: "many", rows: 8 });
     // Compact delivery card: its own default is a fixed 2 rows.
     list.push({ pointer, width: 400, state: "arriving", lang: "cs", cart: "default", compact: true });
+    // Compact with only a user-chosen width: still its own fixed 2 rows (HA merges).
+    list.push({ pointer, width: 400, state: "none", lang: "cs", cart: "default", compact: true, compactcols: 12 });
+    // Two content-sized cards sharing a row: both fill the row's height.
+    list.push({ pointer, width: 600, state: "arriving", lang: "cs", cart: "default", pair: true });
     // The same fixed height set the pre-2024.11 way (layout_options.grid_rows).
     list.push({ pointer, width: 400, state: "arriving", lang: "cs", cart: "many", rows: 4, legacy: true });
   }
@@ -231,6 +235,8 @@ async function main() {
         ...(s.rows ? { rows: String(s.rows) } : {}),
         ...(s.legacy ? { legacy: "1" } : {}),
         ...(s.compact ? { compact: "1" } : {}),
+        ...(s.compactcols ? { compactcols: String(s.compactcols) } : {}),
+        ...(s.pair ? { pair: "1" } : {}),
       });
       await page.goto(`http://127.0.0.1:${PORT}/docs/dev/preview/index.html?${query}`);
       await page.waitForFunction(
@@ -247,7 +253,7 @@ async function main() {
       await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
       const initError = await page.evaluate(() => window.__PREVIEW_ERROR__ || null);
       const problems = initError ? [`preview failed: ${initError}`] : await page.evaluate(inspect, { touch: s.pointer === "touch" });
-      const label = `${s.pointer} ${s.width}px ${s.state} ${s.lang} cart=${s.cart}${s.rows ? ` rows=${s.rows}` : ""}${s.legacy ? " (layout_options)" : ""}${s.compact ? " compact" : ""}`;
+      const label = `${s.pointer} ${s.width}px ${s.state} ${s.lang} cart=${s.cart}${s.rows ? ` rows=${s.rows}` : ""}${s.legacy ? " (layout_options)" : ""}${s.compact ? " compact" : ""}${s.compactcols ? ` cols=${s.compactcols}` : ""}${s.pair ? " pair" : ""}`;
       for (const p of [...problems, ...errors]) failures.push(`${label}: ${p}`);
       checked++;
       await context.close();
@@ -257,6 +263,8 @@ async function main() {
     {
       const context = await browser.newContext({ viewport: { width: 600, height: 1400 }, hasTouch: true, isMobile: true });
       const page = await context.newPage();
+      const errors = [];
+      page.on("pageerror", (err) => errors.push(String(err.message || err)));
       await page.goto(`http://127.0.0.1:${PORT}/docs/dev/preview/index.html?grid=sections&width=400&rows=6&cart=many`);
       await page.waitForFunction(() => window.__PREVIEW_READY__ === true, { timeout: 15000 });
       await page.waitForFunction(() => !!document.querySelector("rohlik-cart-card")?.shadowRoot?.querySelector(".lines > *"));
@@ -271,14 +279,19 @@ async function main() {
           return r.querySelector(".search-popover").getBoundingClientRect().top - r.querySelector(".search-box").getBoundingClientRect().bottom;
         });
       const before = await gap();
-      await page.evaluate(() => {
-        document.querySelector("rohlik-cart-card").shadowRoot.querySelector("ha-card").scrollTop = 80;
+      const scrolled = await page.evaluate(() => {
+        const card = document.querySelector("rohlik-cart-card").shadowRoot.querySelector("ha-card");
+        card.scrollTop = 80;
+        return card.scrollTop;
       });
       await page.waitForTimeout(100);
       const after = await gap();
+      const label = "popover: touch rows=6 cart=many";
+      if (scrolled <= 0) failures.push(`${label}: the card didn't scroll, so the check proves nothing`);
       if (Math.abs(after - before) > 1) {
-        failures.push(`touch rows=6 cart=many: search popover detaches when the card scrolls (${Math.round(after - before)}px)`);
+        failures.push(`${label}: search popover detaches when the card scrolls (${Math.round(after - before)}px)`);
       }
+      for (const e of errors) failures.push(`${label}: ${e}`);
       checked++;
       await context.close();
     }

@@ -1,30 +1,32 @@
 /**
- * Whether a card sits in a cell of fixed height (issue #13): a sections view
- * where the user picked a number of rows in the card's layout settings.
- * Everywhere else (rows "auto", masonry, stacks, panel) the card is
- * content-sized.
+ * Whether a card sits in a cell of fixed height (issue #13), resolved the way
+ * HA's hui-card does: the user's grid options merged over the card's own
+ * (`getGridOptions()`), with the pre-2024.11 `layout_options` migrated when
+ * `grid_options` is absent. A numeric `rows` result means a fixed cell.
  *
- * `layout` is what HA's hui-card sets on the card element: "grid" in a
- * sections view (and the view footer), "panel" in a panel view; masonry and
- * stack children leave it unset. Only a sections cell gets a fixed height
- * from `rows`, so numeric rows count only there — a card moved to masonry or
- * into a stack can keep stale `grid_options` that HA ignores.
- *
- * A panel view is not treated as fixed: whether HA constrains the card's
- * height there isn't guaranteed, and a content-sized card simply scrolls the
- * page, which is safe.
- *
- * HA still honours the pre-2024.11 `layout_options.grid_rows` when
- * `grid_options` is absent (hui-card.ts migrates it), so that counts too.
+ * Only a sections view (`layout === "grid"`, set by hui-card) turns rows
+ * into a cell height. Masonry views and stacks leave `layout` unset and
+ * ignore stale `grid_options`; a panel view isn't treated as fixed either
+ * (whether HA constrains the card's height there isn't guaranteed, and a
+ * content-sized card simply scrolls the page).
  */
 export function isFixedHeight(
   layout: string | undefined,
-  gridOptions: unknown,
+  ownOptions: unknown,
+  gridOptions?: unknown,
   legacyLayoutOptions?: unknown,
 ): boolean {
   if (layout !== "grid") return false;
-  if (gridOptions != null) {
-    return typeof (gridOptions as { rows?: unknown }).rows === "number";
+  const legacy = legacyLayoutOptions as { grid_rows?: unknown; grid_columns?: unknown } | null | undefined;
+  const user =
+    gridOptions != null
+      ? (gridOptions as Record<string, unknown>)
+      : legacy
+        ? { rows: legacy.grid_rows, columns: legacy.grid_columns }
+        : {};
+  const merged: Record<string, unknown> = { ...(ownOptions as Record<string, unknown> | undefined) };
+  for (const [key, value] of Object.entries(user)) {
+    if (value !== undefined) merged[key] = value;
   }
-  return typeof (legacyLayoutOptions as { grid_rows?: unknown } | null | undefined)?.grid_rows === "number";
+  return typeof merged.rows === "number";
 }

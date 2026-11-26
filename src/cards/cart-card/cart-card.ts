@@ -183,6 +183,14 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
     const box = this.searchBoxEl;
     if (!box) return;
     const rect = box.getBoundingClientRect();
+    // A fixed-height card scrolls itself: once the search box leaves the
+    // card's visible area, close the results instead of drawing them over
+    // the neighbouring cards.
+    const card = this.scrollingCard?.getBoundingClientRect();
+    if (card && (rect.bottom < card.top || rect.top > card.bottom)) {
+      this.closePopover();
+      return;
+    }
     this.popoverRect = { left: rect.left, top: rect.bottom + 4, width: rect.width };
   }
 

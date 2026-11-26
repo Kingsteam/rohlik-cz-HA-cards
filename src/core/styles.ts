@@ -27,10 +27,12 @@ export const sharedStyles = css`
 
   /* Only when the user picked a fixed height (see RohlikBaseCard.fixedHeight):
      fill the cell and scroll inside rather than paint over the next card.
-     Elsewhere (rows "auto", masonry, stacks) the card keeps its content
-     height, so a parent that sets a height (e.g. a horizontal stack) can
-     never squeeze it. */
-  :host([fixed]) {
+     In a sections view (in-grid) a content-sized card also fills its cell,
+     which the grid stretches to the tallest card of the row. Elsewhere
+     (masonry, stacks) the card keeps its content height, so a parent that
+     sets a height (e.g. a horizontal stack) can never squeeze it. */
+  :host([fixed]),
+  :host([in-grid]) {
     height: 100%;
   }
 

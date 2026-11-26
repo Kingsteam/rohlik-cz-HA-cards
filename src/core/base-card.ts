@@ -142,17 +142,22 @@ export abstract class RohlikBaseCard<C extends RohlikCardConfig = RohlikCardConf
    * spilling over its neighbours.
    */
   protected get fixedHeight(): boolean {
-    // HA merges the user's grid options over the card's own; a card whose
+    // HA merges the user's grid options over the card's own, so a card whose
     // own default is a fixed row count (compact delivery) is fixed too.
-    const own = this.config ? this.getGridOptions() : undefined;
-    const user = this.config?.grid_options as Record<string, unknown> | undefined;
-    const merged = user || this.config?.layout_options ? user : own;
-    return isFixedHeight(this.layout, merged, this.config?.layout_options);
+    return isFixedHeight(
+      this.layout,
+      this.config ? this.getGridOptions() : undefined,
+      this.config?.grid_options,
+      this.config?.layout_options,
+    );
   }
 
   protected updated(changed: PropertyValues<this>): void {
     super.updated(changed);
     this.toggleAttribute("fixed", this.fixedHeight);
+    // In a sections view the cell stretches to the tallest card of its row;
+    // fill it like HA's own cards do instead of leaving a band below.
+    this.toggleAttribute("in-grid", this.layout === "grid");
   }
 
   static getStubConfig(hass: HomeAssistant): Partial<RohlikCardConfig> {
