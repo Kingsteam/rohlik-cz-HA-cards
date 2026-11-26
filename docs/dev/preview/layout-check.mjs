@@ -83,6 +83,11 @@ function scenarios() {
     list.push({ pointer, width: 400, state: "none", lang: "en", cart: "many", rows: 8 });
     // Compact delivery card: its own default is a fixed 2 rows.
     list.push({ pointer, width: 400, state: "arriving", lang: "cs", cart: "default", compact: true });
+    // English "Tomorrow 06:00" is the longest compact headline: default
+    // 6-column card in 460 / 500 px sections.
+    for (const width of [460, 500]) {
+      list.push({ pointer, width, state: "ordered", lang: "en", cart: "default", compact: true });
+    }
     // Compact at phone width (a 360 px phone has a ~340 px section).
     list.push({ pointer, width: 300, state: "none", lang: "cs", cart: "default", compact: true });
     // Compact with only a user-chosen width: still its own fixed 2 rows (HA merges).
@@ -119,6 +124,15 @@ function inspect({ touch }) {
     const compactBig = haCard.querySelector(".compact-row .big");
     if (compactBig && compactBig.clientWidth < 30) {
       problems.push(`${tag}: compact headline squeezed to ${compactBig.clientWidth}px`);
+    }
+    // From ~190 px (a default 6-column compact card) the whole time fits, and
+    // the chip is never an empty pill: it shows readable text or wraps.
+    if (compactBig && haCard.clientWidth >= 190 && compactBig.scrollWidth > compactBig.clientWidth + 1) {
+      problems.push(`${tag}: compact time cut off (${compactBig.clientWidth}px of ${compactBig.scrollWidth}px)`);
+    }
+    const compactChip = haCard.querySelector(".compact-row .chip");
+    if (compactChip && getComputedStyle(compactChip).display !== "none" && compactChip.clientWidth < 40) {
+      problems.push(`${tag}: compact chip squeezed to ${compactChip.clientWidth}px`);
     }
     if (haCard.scrollWidth > haCard.clientWidth + 1) {
       problems.push(`${tag}: content wider than the card (${haCard.scrollWidth}px in ${haCard.clientWidth}px)`);

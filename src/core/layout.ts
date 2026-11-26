@@ -40,7 +40,7 @@ export function isFixedHeight(
  */
 const HEIGHT_PASSING_WRAPPERS = new Set(["hui-horizontal-stack-card", "hui-conditional-card"]);
 
-/** Elements on the way that are plumbing, not wrappers (card hosts, section). */
+/** Elements on the way that are plumbing, not wrappers (card hosts, edit-mode frame). */
 const TRANSPARENT = new Set(["hui-card", "hui-card-edit-mode", "hui-card-options"]);
 
 /**

@@ -142,7 +142,8 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
     // results would stick without their listeners.
     this.closePopover();
     this.detachPopoverListeners();
-    this.searchSeq++; // drop any in-flight search result
+    this.searchSeq++; // drop any in-flight search result...
+    this.searching = false; // ...and its spinner (its finally won't run for it)
   }
 
   // --- Search popover: position, open/close, keyboard navigation ---------
@@ -455,6 +456,7 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
 
     const trimmed = value.trim();
     if (trimmed.length < SEARCH_MIN_CHARS) {
+      this.searchSeq++; // a late response must not bring results back
       this.searchResults = [];
       this.searching = false;
       this.searchAttempted = false;
@@ -601,6 +603,7 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
 
   private clearSearch(): void {
     if (this.searchDebounce) clearTimeout(this.searchDebounce);
+    this.searchSeq++; // a late response must not bring results back
     this.searchQuery = "";
     this.searchResults = [];
     this.searchError = null;

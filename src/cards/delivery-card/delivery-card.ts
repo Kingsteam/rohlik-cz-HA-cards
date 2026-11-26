@@ -222,7 +222,7 @@ export class RohlikDeliveryCard extends RohlikBaseCard<DeliveryCardConfig> {
         class="compact-row"
         @click=${this.onHeaderTap}
         @keydown=${this.onHeaderKeydown}
-        role=${this.tapDisabled ? nothing : "button"}
+        role=${this.tapDisabled ? "group" : "button"}
         tabindex=${this.tapDisabled ? nothing : "0"}
         aria-label=${`${this.headlineMain(view, true)} · ${this.stateLabel(view)}`}
       >
