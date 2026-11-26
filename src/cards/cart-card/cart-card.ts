@@ -54,6 +54,8 @@ interface SearchAndAddResponse {
 }
 
 const DEFAULT_MAX_ITEMS = 0; // 0 = show every line; the list scrolls instead
+/** Default line limit on touch devices, where the list doesn't scroll inside. */
+const TOUCH_MAX_ITEMS = 8;
 const DEFAULT_LIST_MAX_HEIGHT = 360;
 const SEARCH_DEBOUNCE_MS = 400;
 const SEARCH_MIN_CHARS = 2;
@@ -85,6 +87,8 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
   @state() private addingName: string | null = null;
 
   @state() private popoverOpen = false;
+  /** The search box scrolled out of a fixed-height card: results hidden, not closed. */
+  @state() private popoverOutOfView = false;
   @state() private popoverRect: { left: number; top: number; width: number } | null = null;
   @state() private highlightedIndex = -1;
 
@@ -106,6 +110,8 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
   private searchSeq = 0;
   private loadSeq = 0;
   private popoverListenersAttached = false;
+  /** The ha-card whose own scrolling repositions the popover (fixed card height). */
+  private scrollingCard?: HTMLElement;
   private repositionRaf?: number;
 
   public static getConfigElement(): HTMLElement {
@@ -116,20 +122,28 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
     return { ...RohlikBaseCard.getStubConfig(hass), type: "custom:rohlik-cart-card" };
   }
 
-  getCardSize(): number {
-    return 5;
+  protected estimatedCardSize(): number {
+    // Constant on purpose: the item list loads asynchronously, and a size
+    // that changes after load can move the card between masonry columns.
+    // ~10 units sits between an empty cart (~5) and a capped list (~12).
+    return 10;
   }
 
   getGridOptions(): LovelaceGridOptions {
-    // Fixed row count in the sections layout (resizable in the editor); the
-    // item list scrolls inside the card, so a long cart never overflows it.
-    return { columns: 12, rows: 8, min_columns: 6, min_rows: 4 };
+    // Content-sized: the list is capped by height (mouse) or item count
+    // (touch) instead. A user-chosen fixed height scrolls the whole card.
+    return { columns: 12, rows: "auto", min_columns: 6, min_rows: 4 };
   }
 
   public disconnectedCallback(): void {
     super.disconnectedCallback();
     if (this.searchDebounce) clearTimeout(this.searchDebounce);
+    // Close, not just detach: re-attached with popoverOpen still true the
+    // results would stick without their listeners.
+    this.closePopover();
     this.detachPopoverListeners();
+    this.searchSeq++; // drop any in-flight search result...
+    this.searching = false; // ...and its spinner (its finally won't run for it)
   }
 
   // --- Search popover: position, open/close, keyboard navigation ---------
@@ -153,6 +167,10 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
     window.addEventListener("scroll", this.onWindowReposition, true);
     window.addEventListener("resize", this.onWindowReposition);
     document.addEventListener("pointerdown", this.onDocumentPointerDown);
+    // With a fixed card height the card itself scrolls. Scroll events don't
+    // leave the shadow root, so the window listener above never sees them.
+    this.scrollingCard = this.renderRoot.querySelector("ha-card") ?? undefined;
+    this.scrollingCard?.addEventListener("scroll", this.onWindowReposition, { passive: true });
   }
 
   private detachPopoverListeners(): void {
@@ -161,6 +179,8 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
     window.removeEventListener("scroll", this.onWindowReposition, true);
     window.removeEventListener("resize", this.onWindowReposition);
     document.removeEventListener("pointerdown", this.onDocumentPointerDown);
+    this.scrollingCard?.removeEventListener("scroll", this.onWindowReposition);
+    this.scrollingCard = undefined;
     if (this.repositionRaf !== undefined) {
       cancelAnimationFrame(this.repositionRaf);
       this.repositionRaf = undefined;
@@ -171,14 +191,70 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
     const box = this.searchBoxEl;
     if (!box) return;
     const rect = box.getBoundingClientRect();
+    // A fixed-height card scrolls itself: while the search box is outside
+    // the card's visible area, hide the results instead of drawing them over
+    // the neighbouring cards; they come back when it scrolls back into view.
+    // The results hang from the box's bottom edge, so that edge decides.
+    // Only a fixed-height card scrolls itself; query it fresh (a re-render
+    // can replace the ha-card element).
+    const current = this.syncScrollingCard();
+    const haCard = this.fixedHeight ? current : null;
+    const card = haCard?.getBoundingClientRect();
+    this.popoverOutOfView = !!card && (rect.bottom < card.top || rect.bottom > card.bottom);
+    // Hidden results must not stay keyboard-active (Enter would add an
+    // item the user can't see).
+    if (this.popoverOutOfView) this.highlightedIndex = -1;
     this.popoverRect = { left: rect.left, top: rect.bottom + 4, width: rect.width };
   }
 
+  /**
+   * Keeps the card-scroll listener on the current ha-card: a re-render (e.g.
+   * entities missing and back) can replace the element while results are open.
+   */
+  private syncScrollingCard(): HTMLElement | undefined {
+    const current = this.renderRoot.querySelector<HTMLElement>("ha-card") ?? undefined;
+    if (this.popoverListenersAttached && current !== this.scrollingCard) {
+      this.scrollingCard?.removeEventListener("scroll", this.onWindowReposition);
+      this.scrollingCard = current;
+      this.scrollingCard?.addEventListener("scroll", this.onWindowReposition, { passive: true });
+    }
+    return current;
+  }
+
+  protected updated(changed: PropertyValues<this>): void {
+    super.updated(changed);
+    if (this.popoverOpen) this.syncScrollingCard();
+  }
+
+  /** Results are open and on screen (not hidden by a scrolled-away search box). */
+  private get resultsVisible(): boolean {
+    return this.popoverOpen && !this.popoverOutOfView;
+  }
+
   /** Opens the popover and (re)computes its position — safe to call repeatedly. */
-  private openPopover(): void {
+  private openPopover({ reveal = true }: { reveal?: boolean } = {}): void {
+    // A search finishing after the card was detached must not reopen it.
+    if (!this.isConnected) return;
     this.attachPopoverListeners();
     this.popoverOpen = true;
+    if (reveal) this.revealSearchBox();
     this.positionPopover();
+  }
+
+  /**
+   * In a short fixed-height card the search box can sit partly below the
+   * card's visible area; scroll the card (not the page) so the box and the
+   * results hanging from it are in view.
+   */
+  private revealSearchBox(): void {
+    if (!this.fixedHeight) return;
+    const box = this.searchBoxEl;
+    const card = this.renderRoot.querySelector<HTMLElement>("ha-card");
+    if (!box || !card) return;
+    const b = box.getBoundingClientRect();
+    const c = card.getBoundingClientRect();
+    if (b.bottom > c.bottom) card.scrollTop += b.bottom - c.bottom + 4;
+    else if (b.top < c.top) card.scrollTop -= c.top - b.top + 4;
   }
 
   private closePopover(): void {
@@ -240,18 +316,39 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
    * Height cap for the item list, in px (0 = uncapped).
    *
    * Always 0 on touch devices: an inner scroll region there swallows the
-   * swipe meant for the dashboard view, so the list grows instead and the
-   * page scrolls as usual.
+   * swipe meant for the dashboard view, so the list is capped by item count
+   * instead (see `effectiveMaxItems`). Also 0 when the user picked a fixed
+   * card height: the card itself then scrolls, so the list needs no cap of
+   * its own (one scroller, not two).
    */
   private listMaxHeight(): number {
+    if (this.fixedHeight) return 0;
     const configured = this.config.list_max_height ?? DEFAULT_LIST_MAX_HEIGHT;
     if (configured <= 0) return 0;
-    try {
-      if (window.matchMedia?.("(pointer: coarse)").matches) return 0;
-    } catch {
-      // matchMedia unavailable (non-browser env): keep the configured cap.
-    }
+    if (this.isTouch()) return 0;
     return configured;
+  }
+
+  private isTouch(): boolean {
+    try {
+      return Boolean(window.matchMedia?.("(pointer: coarse)").matches);
+    } catch {
+      return false; // matchMedia unavailable (non-browser env)
+    }
+  }
+
+  /**
+   * Lines shown before "Show all (N)". An explicit `max_items` wins (0 =
+   * all). Unset: all on mouse (the list scrolls within `list_max_height`),
+   * `TOUCH_MAX_ITEMS` on touch — also with a fixed card height — where the
+   * list never scrolls on its own and a long cart would otherwise make a very
+   * tall card; `list_max_height: 0` asks for the whole list.
+   */
+  private effectiveMaxItems(): number {
+    if (this.config.max_items != null) return this.config.max_items;
+    // `list_max_height: 0` has always meant "show the whole list"; keep that.
+    const unlimited = this.config.list_max_height != null && this.config.list_max_height <= 0;
+    return this.isTouch() && !unlimited ? TOUCH_MAX_ITEMS : DEFAULT_MAX_ITEMS;
   }
 
   private async ensureConfigEntryId(): Promise<string | undefined> {
@@ -359,6 +456,7 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
 
     const trimmed = value.trim();
     if (trimmed.length < SEARCH_MIN_CHARS) {
+      this.searchSeq++; // a late response must not bring results back
       this.searchResults = [];
       this.searching = false;
       this.searchAttempted = false;
@@ -380,19 +478,26 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
       return;
     }
     if (ev.key === "ArrowDown") {
-      if (!this.popoverOpen || !this.searchResults.length) return;
+      if (!this.resultsVisible || !this.searchResults.length) return;
       ev.preventDefault();
       this.highlightedIndex = moveHighlight(this.highlightedIndex, 1, this.searchResults.length);
       return;
     }
     if (ev.key === "ArrowUp") {
-      if (!this.popoverOpen || !this.searchResults.length) return;
+      if (!this.resultsVisible || !this.searchResults.length) return;
       ev.preventDefault();
       this.highlightedIndex = moveHighlight(this.highlightedIndex, -1, this.searchResults.length);
       return;
     }
     if (ev.key === "Enter") {
       ev.preventDefault();
+      // Results hidden by a scrolled-away search box: bring the box back into
+      // view and show them, rather than add an item the user can't see.
+      if (this.popoverOpen && this.popoverOutOfView) {
+        this.revealSearchBox();
+        this.positionPopover();
+        return;
+      }
       const highlighted =
         this.highlightedIndex >= 0 ? this.searchResults[this.highlightedIndex] : undefined;
       if (highlighted) {
@@ -421,13 +526,14 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
       this.searchResults = response?.search_results ?? [];
       this.highlightedIndex = -1;
       this.searchAttempted = true;
-      if (this.searchQuery.trim().length >= SEARCH_MIN_CHARS) this.openPopover();
+      // Async completion: don't scroll the card under the user (no reveal).
+      if (this.searchQuery.trim().length >= SEARCH_MIN_CHARS) this.openPopover({ reveal: false });
     } catch {
       if (seq !== this.searchSeq) return;
       this.searchResults = [];
       this.searchError = this.t("search_error");
       this.searchAttempted = true;
-      if (this.searchQuery.trim().length >= SEARCH_MIN_CHARS) this.openPopover();
+      if (this.searchQuery.trim().length >= SEARCH_MIN_CHARS) this.openPopover({ reveal: false });
     } finally {
       if (seq === this.searchSeq) this.searching = false;
     }
@@ -497,6 +603,7 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
 
   private clearSearch(): void {
     if (this.searchDebounce) clearTimeout(this.searchDebounce);
+    this.searchSeq++; // a late response must not bring results back
     this.searchQuery = "";
     this.searchResults = [];
     this.searchError = null;
@@ -534,7 +641,7 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
     const showSearch = this.config.show_search !== false;
     const showBrand = this.config.show_brand !== false;
     const grouped = this.config.group_by_category === true;
-    const maxItems = this.config.max_items ?? DEFAULT_MAX_ITEMS;
+    const maxItems = this.effectiveMaxItems();
     const showOrderButton = this.config.show_order_button !== false;
     const canOrderNow = !isEmpty;
 
@@ -619,10 +726,10 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
           <input
             type="text"
             role="combobox"
-            aria-expanded=${this.popoverOpen ? "true" : "false"}
+            aria-expanded=${this.resultsVisible ? "true" : "false"}
             aria-controls="cart-search-listbox"
             aria-autocomplete="list"
-            aria-activedescendant=${this.highlightedIndex >= 0
+            aria-activedescendant=${this.resultsVisible && this.highlightedIndex >= 0
               ? `cart-search-option-${this.highlightedIndex}`
               : nothing}
             .value=${this.searchQuery}
@@ -640,7 +747,7 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
             <ha-icon icon=${this.favouriteOnly ? "mdi:heart" : "mdi:heart-outline"}></ha-icon>
           </button>
         </div>
-        ${this.popoverOpen ? this.renderSearchPopover() : nothing}
+        ${this.resultsVisible ? this.renderSearchPopover() : nothing}
       </div>
     `;
   }

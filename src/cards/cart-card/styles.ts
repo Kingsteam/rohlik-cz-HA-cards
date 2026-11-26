@@ -14,11 +14,19 @@ export const cartStyles = css`
   /* Scrolls only when list_max_height applies (pointer-fine devices, see
      listMaxHeight() in cart-card.ts). No overscroll-behavior: once the list
      reaches its end the scroll must chain to the dashboard view. */
+  /* Never grows into spare height (a stretched or fixed cell), so "Show
+     all" stays right under the last line, and never shrinks (a parent with
+     a set height can't squeeze it; max-height caps it on desktop). */
   .lines {
-    flex: 1 1 auto;
+    flex: 0 0 auto;
     min-height: 0;
     overflow-y: auto;
   }
+
+  /* User-chosen fixed height: like the other cards, the list keeps its
+     natural height (shared :host([fixed]) ha-card > * rule, and
+     listMaxHeight() lifts the desktop cap) and the card is the one scroller,
+     as HA's own to-do card does — no nested scroll region on any device. */
 
   .caption {
     color: var(--secondary-text-color);

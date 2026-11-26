@@ -44,6 +44,12 @@ jobs:
           npx --yes playwright install --with-deps chromium
           npm run check:scroll
 
+      # Issue #13: in a sections dashboard no card may spill over the next one
+      # or leave an empty band, and a user-chosen fixed height must keep the
+      # card inside its cell.
+      - name: Layout check (sections grid)
+        run: npm run check:layout
+
   hacs:
     runs-on: ubuntu-latest
     steps:

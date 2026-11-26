@@ -309,10 +309,34 @@ export const deliveryCardStyles = css`
     }
   }
 
+  /* The compact card can fill a taller slot (2-row cell, a row stretched by
+     a taller neighbour, a square grid card); keep its single line centred.
+     A no-op when the card is content-sized. */
+  .compact-row {
+    margin-block: auto;
+  }
+
+  /* On a narrow compact card the chip gives way (ellipsis) instead of
+     pushing the row wider than the card. */
+  .compact-row .chip {
+    /* Block (not inline-flex), so text-overflow: ellipsis applies; never
+       narrower than a readable few letters (it wraps instead). */
+    display: block;
+    flex: 0 1 auto;
+    min-width: 4.5em;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Icon, time and chip on one line; when the chip can't fit with its
+     readable minimum it wraps onto a second line (the compact card has room
+     in its 2-row cell) instead of being squeezed or cutting off the time. */
   .compact-row {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 10px;
+    gap: 4px 10px;
     cursor: pointer;
   }
 
@@ -322,8 +346,11 @@ export const deliveryCardStyles = css`
     flex-shrink: 0;
   }
 
+  /* The time never gives way to the chip; it only ellipsizes if it alone is
+     wider than the card (next to the 24 px icon and the 10 px gap). */
   .compact-row .headline {
-    flex: 1;
+    flex: 1 0 auto;
+    max-width: calc(100% - 34px);
     margin: 0;
     overflow: hidden;
   }
@@ -333,6 +360,26 @@ export const deliveryCardStyles = css`
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  /* A default 6-column compact card in a narrow section: a smaller headline
+     keeps "Tomorrow 06:00" whole. */
+  @container (max-width: 240px) {
+    .compact-row .big {
+      font-size: 1.1rem;
+    }
+  }
+
+  @container (max-width: 200px) {
+    .compact-row .big {
+      font-size: 0.95rem;
+    }
+  }
+
+  @container (max-width: 180px) {
+    .compact-row .big {
+      font-size: 0.85rem;
+    }
   }
 
   /* :host sets container-type: inline-size (core/styles.ts) — this queries

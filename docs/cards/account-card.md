@@ -64,4 +64,4 @@ show_footer: true
 
 ## Grid sizing
 
-6 columns × 3 rows (minimum 4 × 2).
+6 columns wide (minimum 4). In a sections dashboard the card is **as tall as its content** (`rows: "auto"`), so it never overlaps the card below or leaves an empty band. You can still pick a fixed height in the card's **Layout** tab: the card then fills that cell and scrolls inside it rather than spilling over.

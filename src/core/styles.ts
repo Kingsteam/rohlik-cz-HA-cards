@@ -9,7 +9,13 @@ import { css } from "lit";
 export const sharedStyles = css`
   :host {
     --rohlik-accent: var(--primary-color);
-    display: block;
+    /* A flex column whose ha-card grows: fill a slot a parent stretches
+       (HA's horizontal stack and grid card stretch the hui-card wrapper) but
+       never shrink below the content. In an auto-height parent (masonry,
+       rows "auto") min-height resolves to 0 and the card is content-sized. */
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
     /* Lets cards adapt to their own width with @container queries. */
     container-type: inline-size;
   }
@@ -17,12 +23,39 @@ export const sharedStyles = css`
   ha-card {
     display: flex;
     flex-direction: column;
-    height: 100%;
+    /* Grows to fill the host (see :host), never shrinks below its content. */
+    flex: 1 0 auto;
     padding: var(--ha-space-4, 16px);
     box-sizing: border-box;
-    /* Deliberately NOT a scroll container. On touch, a scrollable card eats
+    /* NOT a scroll container by default. On touch, a scrollable card eats
        the swipe before the dashboard view gets it, so the page stops
-       scrolling. Cards size themselves through getGridOptions() instead. */
+       scrolling. Cards are content-sized (rows "auto") instead. */
+  }
+
+  /* Only when the user picked a fixed height (see RohlikBaseCard.fixedHeight):
+     fill the cell and scroll inside rather than paint over the next card.
+     In a sections view (in-grid) a content-sized card also fills its cell,
+     which the grid stretches to the tallest card of the row. Elsewhere
+     (masonry, stacks) the card keeps its content height, so a parent that
+     sets a height (e.g. a horizontal stack) can never squeeze it. */
+  :host([fixed]),
+  :host([in-grid]),
+  :host([fixed]) ha-card,
+  :host([in-grid]) ha-card {
+    height: 100%;
+  }
+
+  :host([fixed]) ha-card {
+    overflow-y: auto;
+    /* overflow-y: auto would make overflow-x auto too; never scroll sideways. */
+    overflow-x: hidden;
+  }
+
+  /* In a scrolling flex column, blocks that clip their own overflow (chip
+     rows, progress tracks) would shrink to 0 px; keep every block at its
+     content height and let the card scroll instead. */
+  :host([fixed]) ha-card > * {
+    flex-shrink: 0;
   }
 
   .header {
@@ -108,6 +141,9 @@ export const sharedStyles = css`
     padding: 6px 14px;
     /* HA's own buttons are pills. */
     border-radius: var(--ha-border-radius-pill, 9999px);
+    /* <button> is border-box by default, a link styled as .btn is not: with
+       width: 100% (narrow cards) its padding would stick out of the card. */
+    box-sizing: border-box;
     border: none;
     background: var(--rohlik-accent);
     color: var(--text-primary-color, #fff);

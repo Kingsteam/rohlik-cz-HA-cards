@@ -15,8 +15,8 @@ the cart.
 | `show_search`         | boolean | `true`  | Show the product search box. |
 | `group_by_category`   | boolean | `false` | Group cart lines under small uppercase category headers. |
 | `show_brand`          | boolean | `true`  | Show the brand in each line's secondary text. |
-| `max_items`           | number  | `0`     | Lines to show before collapsing the rest behind "Show all N"; `0` shows every line and lets the list scroll instead. |
-| `list_max_height`     | number  | `360`   | Maximum height of the item list in px on pointer-fine (desktop) devices; beyond that the list scrolls inside the card. Ignored on touch devices, where the list grows so swiping still scrolls the dashboard. `0` = unlimited everywhere. |
+| `max_items`           | number  | automatic | Lines to show before collapsing the rest behind "Show all N". Unset: every line on desktop (the list scrolls within `list_max_height`), 8 on touch devices (unless `list_max_height` is `0`). `0` shows every line everywhere. |
+| `list_max_height`     | number  | `360`   | Maximum height of the item list in px on pointer-fine (desktop) devices; beyond that the list scrolls inside the card. Ignored on touch devices, where the list can't scroll inside (it would swallow the swipe meant for the dashboard) and `max_items` keeps a long cart short instead. `0` = unlimited everywhere. |
 | `min_order`           | number  | shop minimum | Minimum order value in your account's currency. The card shows an "Above/Below minimum" chip and how much is missing; remaining Xtra no-limit orders count as above the minimum. Unset uses the shop's own minimum (`Minimum Order Price` on `cart_price`, HA-RohlikCZ 1.3+); `0` disables the check. |
 | `show_order_button`   | boolean | `true`  | Show the "Order" button in the footer that opens the Rohlík.cz cart. The button is enabled whenever the cart is not empty; Rohlík.cz enforces the real ordering rules at checkout. |
 | `checkout_url`        | string  | your shop's cart | URL the "Order" button opens in a new tab. Defaults to `https://www.rohlik.cz/kosik`, or the home page of Knuspr.de / Gurkerl.at / Kifli.hu / Sezamo.ro. |
@@ -29,7 +29,7 @@ device: 0123456789abcdef0123456789abcdef
 show_search: true
 group_by_category: false
 show_brand: true
-max_items: 0
+max_items: 8
 list_max_height: 360
 min_order: 500
 show_order_button: true
@@ -130,4 +130,4 @@ checkout_url: https://www.rohlik.cz/kosik
 
 ## Grid
 
-12 columns × 4 rows by default, minimum 6 × 3 (`getCardSize()` returns 5).
+12 columns wide (minimum 6). In a sections dashboard the card is **as tall as its content** (`rows: "auto"`), so it never overlaps the card below or leaves an empty band. You can still pick a fixed height in the card's **Layout** tab: the card then fills that cell and scrolls inside it rather than spilling over. With a fixed height the whole card scrolls inside its cell, like Home Assistant's own to-do card; the list then has no height cap of its own (on touch devices it keeps the 8-item limit).
