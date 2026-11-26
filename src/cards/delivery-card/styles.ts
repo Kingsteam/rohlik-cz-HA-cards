@@ -309,9 +309,20 @@ export const deliveryCardStyles = css`
     }
   }
 
-  /* The compact card fills its 2-row cell; keep its single line centred. */
-  :host([fixed]) .compact-row {
+  /* The compact card fills its cell (2 rows, or a row stretched by a taller
+     neighbour); keep its single line centred. */
+  :host([fixed]) .compact-row,
+  :host([in-grid]) .compact-row {
     margin-block: auto;
+  }
+
+  /* On a narrow compact card the chip gives way (ellipsis) instead of
+     pushing the row wider than the card. */
+  .compact-row .chip {
+    flex-shrink: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .compact-row {

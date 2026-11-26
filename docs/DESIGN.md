@@ -42,8 +42,9 @@ Decisions already taken (do not re-open):
    so the card either spills over the next card or leaves an empty band (issue #13).
    A user-chosen fixed height (numeric `grid_options.rows`, or the legacy
    `layout_options.grid_rows`, in a sections view — `layout === "grid"`) sets the
-   `fixed` host attribute (see `src/core/layout.ts`); only then are `:host` and
-   `ha-card` `height: 100%`, so the card fills its cell and scrolls inside it, with
+   `fixed` host attribute (see `src/core/layout.ts`); then `:host` is `height: 100%`
+   (as it is in any sections cell, `in-grid`), so the card fills its cell and
+   scrolls inside it (vertically only), with
    every block kept at its content height (`flex-shrink: 0`). The cart's item list
    is no exception: its desktop height cap is lifted and the card is the one scroller. Without `fixed` (rows "auto", masonry, stacks,
    panel views, stale `grid_options` outside sections) the card keeps its content

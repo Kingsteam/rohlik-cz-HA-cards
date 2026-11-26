@@ -87,6 +87,8 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
   @state() private addingName: string | null = null;
 
   @state() private popoverOpen = false;
+  /** The search box scrolled out of a fixed-height card: results hidden, not closed. */
+  @state() private popoverOutOfView = false;
   @state() private popoverRect: { left: number; top: number; width: number } | null = null;
   @state() private highlightedIndex = -1;
 
@@ -121,7 +123,9 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
   }
 
   protected estimatedCardSize(): number {
-    return 12;
+    // Header, total, search and footer ≈ 5 units; about one unit per shown
+    // line, up to what the desktop list cap shows.
+    return Math.min(12, 5 + this.lines.length);
   }
 
   getGridOptions(): LovelaceGridOptions {
@@ -181,14 +185,11 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
     const box = this.searchBoxEl;
     if (!box) return;
     const rect = box.getBoundingClientRect();
-    // A fixed-height card scrolls itself: once the search box leaves the
-    // card's visible area, close the results instead of drawing them over
-    // the neighbouring cards.
+    // A fixed-height card scrolls itself: while the search box is outside
+    // the card's visible area, hide the results instead of drawing them over
+    // the neighbouring cards; they come back when it scrolls back into view.
     const card = this.scrollingCard?.getBoundingClientRect();
-    if (card && (rect.bottom < card.top || rect.top > card.bottom)) {
-      this.closePopover();
-      return;
-    }
+    this.popoverOutOfView = !!card && (rect.bottom < card.top || rect.top > card.bottom);
     this.popoverRect = { left: rect.left, top: rect.bottom + 4, width: rect.width };
   }
 
@@ -679,7 +680,7 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
             <ha-icon icon=${this.favouriteOnly ? "mdi:heart" : "mdi:heart-outline"}></ha-icon>
           </button>
         </div>
-        ${this.popoverOpen ? this.renderSearchPopover() : nothing}
+        ${this.popoverOpen && !this.popoverOutOfView ? this.renderSearchPopover() : nothing}
       </div>
     `;
   }

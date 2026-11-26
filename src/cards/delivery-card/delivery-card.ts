@@ -100,7 +100,9 @@ export class RohlikDeliveryCard extends RohlikBaseCard<DeliveryCardConfig> {
   }
 
   protected estimatedCardSize(): number {
-    return this.config?.compact ? 2 : 10;
+    if (this.config?.compact) return 2;
+    // An active order shows the window, tracking and summary rows.
+    return this.isOn("is_ordered") ? 10 : 7;
   }
 
   public getGridOptions(): LovelaceGridOptions {

@@ -76,13 +76,15 @@ function scenarios() {
       list.push({ pointer, width: 400, state: "arriving", lang: "cs", cart, rows: 4 });
     }
     // Other fixed heights and widths: rows 4 is clamped to each card's
-    // min_rows (6 for the cart), rows 8 is the old cart default.
+    // min_rows, rows 8 is the old cart default.
     for (const width of [300, 500]) {
       list.push({ pointer, width, state: "arriving", lang: "cs", cart: "default", rows: 4 });
     }
     list.push({ pointer, width: 400, state: "none", lang: "en", cart: "many", rows: 8 });
     // Compact delivery card: its own default is a fixed 2 rows.
     list.push({ pointer, width: 400, state: "arriving", lang: "cs", cart: "default", compact: true });
+    // Compact at phone width (a 360 px phone has a ~340 px section).
+    list.push({ pointer, width: 300, state: "none", lang: "cs", cart: "default", compact: true });
     // Compact with only a user-chosen width: still its own fixed 2 rows (HA merges).
     list.push({ pointer, width: 400, state: "none", lang: "cs", cart: "default", compact: true, compactcols: 12 });
     // Two content-sized cards sharing a row: both fill the row's height.
@@ -113,6 +115,9 @@ function inspect({ touch }) {
     const box = haCard.getBoundingClientRect();
     const round = (n) => Math.round(n);
 
+    if (haCard.scrollWidth > haCard.clientWidth + 1) {
+      problems.push(`${tag}: content wider than the card (${haCard.scrollWidth}px in ${haCard.clientWidth}px)`);
+    }
     if (box.bottom > c.bottom + 1) {
       problems.push(`${tag}: spills ${round(box.bottom - c.bottom)}px below its cell (overlaps the next card)`);
     }
@@ -126,10 +131,8 @@ function inspect({ touch }) {
         problems.push(`${tag}: in a fixed cell but not marked fixed`);
       }
       // No block may be squeezed below its content (a scrolling flex column
-      // shrinks blocks that clip their own overflow to 0 px). The cart's list
-      // is the one block meant to shrink and scroll.
+      // shrinks blocks that clip their own overflow to 0 px).
       for (const child of haCard.children) {
-        if (child.classList.contains("lines")) continue;
         if (child.scrollHeight > child.offsetHeight + 1) {
           problems.push(`${tag}: .${[...child.classList].join(".") || child.tagName.toLowerCase()} squeezed to ${child.offsetHeight}px (content ${child.scrollHeight}px)`);
         }
@@ -292,6 +295,19 @@ async function main() {
       if (Math.abs(after - before) > 1) {
         failures.push(`${label}: search popover detaches when the card scrolls (${Math.round(after - before)}px)`);
       }
+      // Scrolled out of the card the results hide; scrolled back they return.
+      const popoverShown = () =>
+        page.evaluate(() => !!document.querySelector("rohlik-cart-card").shadowRoot.querySelector(".search-popover"));
+      const setScroll = (y) =>
+        page.evaluate((top) => {
+          document.querySelector("rohlik-cart-card").shadowRoot.querySelector("ha-card").scrollTop = top;
+        }, y);
+      await setScroll(600);
+      await page.waitForTimeout(100);
+      if (await popoverShown()) failures.push(`${label}: results drawn while the search box is scrolled out of the card`);
+      await setScroll(0);
+      await page.waitForTimeout(100);
+      if (!(await popoverShown())) failures.push(`${label}: results don't come back when the search box scrolls back`);
       for (const e of errors) failures.push(`${label}: ${e}`);
       checked++;
       await context.close();

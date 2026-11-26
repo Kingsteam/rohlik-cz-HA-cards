@@ -38,12 +38,13 @@ export const sharedStyles = css`
 
   :host([fixed]) ha-card {
     overflow-y: auto;
+    /* overflow-y: auto would make overflow-x auto too; never scroll sideways. */
+    overflow-x: hidden;
   }
 
   /* In a scrolling flex column, blocks that clip their own overflow (chip
      rows, progress tracks) would shrink to 0 px; keep every block at its
-     content height and let the card scroll instead. The cart's item list is
-     the one exception (cart-card/styles.ts). */
+     content height and let the card scroll instead. */
   :host([fixed]) ha-card > * {
     flex-shrink: 0;
   }
@@ -131,6 +132,9 @@ export const sharedStyles = css`
     padding: 6px 14px;
     /* HA's own buttons are pills. */
     border-radius: var(--ha-border-radius-pill, 9999px);
+    /* <button> is border-box by default, a link styled as .btn is not: with
+       width: 100% (narrow cards) its padding would stick out of the card. */
+    box-sizing: border-box;
     border: none;
     background: var(--rohlik-accent);
     color: var(--text-primary-color, #fff);
