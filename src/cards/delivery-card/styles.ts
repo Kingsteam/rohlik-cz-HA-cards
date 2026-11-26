@@ -357,8 +357,9 @@ export const deliveryCardStyles = css`
     white-space: nowrap;
   }
 
-  /* Too narrow for the chip and the full time: drop the chip, keep the time. */
-  @container (max-width: 260px) {
+  /* Too narrow for any chip text: drop the chip, keep the time (the icon
+     colour still tells the state apart). Above that the chip ellipsizes. */
+  @container (max-width: 200px) {
     .compact-row .chip {
       display: none;
     }

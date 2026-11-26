@@ -49,6 +49,14 @@ const CHIP_KIND: Record<DeliveryView["state"], "ok" | "neutral"> = {
   none: "neutral",
 };
 
+/** Compact card icon per state, so the state shows even without the chip. */
+const COMPACT_ICON: Record<DeliveryView["state"], string> = {
+  none: "mdi:calendar-clock",
+  ordered: "mdi:truck-delivery",
+  arriving: "mdi:truck-fast",
+  delivered: "mdi:check-circle",
+};
+
 const PHASE_STEPS: readonly DeliveryPhase[] = ["queued", "on_the_way", "at_door", "delivered"];
 
 const SLOT_ICON: Record<DeliverySlotKey, string> = {
@@ -183,12 +191,17 @@ export class RohlikDeliveryCard extends RohlikBaseCard<DeliveryCardConfig> {
     `;
   }
 
+  /** The chip's text: the tracked phase when known, else the coarse state. */
+  private stateLabel(view: DeliveryView): string {
+    const phase = view.state === "delivered" ? null : view.tracking.phase;
+    return phase ? this.t(`phase_${phase}`) : this.t(`chip_${view.state}`);
+  }
+
   /** Status chip: the tracked phase when known, else the coarse state. */
   private renderStateChip(view: DeliveryView): TemplateResult {
     const phase = view.state === "delivered" ? null : view.tracking.phase;
     const kind = phase === "at_door" ? "warn" : phase === "queued" ? "neutral" : CHIP_KIND[view.state];
-    const label = phase ? this.t(`phase_${phase}`) : this.t(`chip_${view.state}`);
-    return html`<span class="chip ${kind}">${label}</span>`;
+    return html`<span class="chip ${kind}">${this.stateLabel(view)}</span>`;
   }
 
   private renderChips(view: DeliveryView): TemplateResult {
@@ -211,8 +224,9 @@ export class RohlikDeliveryCard extends RohlikBaseCard<DeliveryCardConfig> {
         @keydown=${this.onHeaderKeydown}
         role=${this.tapDisabled ? nothing : "button"}
         tabindex=${this.tapDisabled ? nothing : "0"}
+        aria-label=${`${this.headlineMain(view, true)} · ${this.stateLabel(view)}`}
       >
-        <ha-icon icon="mdi:truck-delivery"></ha-icon>
+        <ha-icon icon=${COMPACT_ICON[view.state]}></ha-icon>
         <div class="headline">
           <span class="big">${this.headlineMain(view, true)}</span>
         </div>

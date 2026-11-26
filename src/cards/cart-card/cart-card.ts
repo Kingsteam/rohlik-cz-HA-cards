@@ -142,6 +142,7 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
     // results would stick without their listeners.
     this.closePopover();
     this.detachPopoverListeners();
+    this.searchSeq++; // drop any in-flight search result
   }
 
   // --- Search popover: position, open/close, keyboard navigation ---------
@@ -230,10 +231,12 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
   }
 
   /** Opens the popover and (re)computes its position — safe to call repeatedly. */
-  private openPopover(): void {
+  private openPopover({ reveal = true }: { reveal?: boolean } = {}): void {
+    // A search finishing after the card was detached must not reopen it.
+    if (!this.isConnected) return;
     this.attachPopoverListeners();
     this.popoverOpen = true;
-    this.revealSearchBox();
+    if (reveal) this.revealSearchBox();
     this.positionPopover();
   }
 
@@ -521,13 +524,14 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
       this.searchResults = response?.search_results ?? [];
       this.highlightedIndex = -1;
       this.searchAttempted = true;
-      if (this.searchQuery.trim().length >= SEARCH_MIN_CHARS) this.openPopover();
+      // Async completion: don't scroll the card under the user (no reveal).
+      if (this.searchQuery.trim().length >= SEARCH_MIN_CHARS) this.openPopover({ reveal: false });
     } catch {
       if (seq !== this.searchSeq) return;
       this.searchResults = [];
       this.searchError = this.t("search_error");
       this.searchAttempted = true;
-      if (this.searchQuery.trim().length >= SEARCH_MIN_CHARS) this.openPopover();
+      if (this.searchQuery.trim().length >= SEARCH_MIN_CHARS) this.openPopover({ reveal: false });
     } finally {
       if (seq === this.searchSeq) this.searching = false;
     }

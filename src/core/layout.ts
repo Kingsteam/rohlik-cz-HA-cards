@@ -32,19 +32,22 @@ export function isFixedHeight(
 }
 
 /**
- * Wrappers that stack their cards and give each one only its content height
- * (no definite height to fill): a card inside one is content-sized even in
- * a fixed cell, exactly like HA's own cards there.
+ * HA wrappers known to give a nested card the full cell height (the
+ * horizontal stack stretches each card; the conditional card passes its
+ * size through). Any other wrapper on the way — vertical stack, grid card,
+ * third-party layout cards — gives no definite height to fill, so the card
+ * stays content-sized there, exactly like HA's own cards.
  */
-const CONTENT_SIZED_WRAPPERS = new Set(["hui-vertical-stack-card", "hui-grid-card"]);
+const HEIGHT_PASSING_WRAPPERS = new Set(["hui-horizontal-stack-card", "hui-conditional-card"]);
+
+/** Elements on the way that are plumbing, not wrappers (card hosts, section). */
+const TRANSPARENT = new Set(["hui-card", "hui-card-edit-mode", "hui-card-options"]);
 
 /**
- * Whether `el` sits inside a fixed-height sections cell through a wrapper
- * that doesn't pass `layout` on but does pass the cell height down
- * (horizontal stack, conditional card). HA marks such a cell
- * `.card.fit-rows` (hui-grid-section.ts). A vertical stack or grid card on
- * the way makes the card content-sized instead. Walks the composed tree a
- * bounded number of steps and stops at the section itself.
+ * Whether `el` sits inside a fixed-height sections cell (`.card.fit-rows`,
+ * hui-grid-section.ts) through wrappers that don't pass `layout` on but do
+ * pass the cell height down (HEIGHT_PASSING_WRAPPERS). Walks the composed
+ * tree a bounded number of steps and stops at the section itself.
  */
 export function insideFixedSectionCell(el: Element, maxSteps = 24): boolean {
   let node: Node | null = el.parentNode;
@@ -52,8 +55,10 @@ export function insideFixedSectionCell(el: Element, maxSteps = 24): boolean {
     if (node instanceof Element) {
       if (node.classList.contains("card") && node.classList.contains("fit-rows")) return true;
       const tag = node.tagName.toLowerCase();
-      if (CONTENT_SIZED_WRAPPERS.has(tag)) return false;
       if (tag === "hui-grid-section" || tag === "hui-section" || tag === "body") return false;
+      // Any other custom element (a wrapper card) must be a known
+      // height-passing one, else the card stays content-sized.
+      if (tag.includes("-") && !HEIGHT_PASSING_WRAPPERS.has(tag) && !TRANSPARENT.has(tag)) return false;
     }
     node = node instanceof ShadowRoot ? node.host : node.parentNode;
   }

@@ -413,6 +413,17 @@ async function main() {
           const lines = cart.shadowRoot.querySelector(".lines");
           if (lines && lines.clientHeight > 400) found.push(`rohlik-cart-card: in a vertical stack the list lost its cap (${lines.clientHeight}px)`);
         }
+        // An unknown (third-party) wrapper card: not known to pass the cell
+        // height down, so the card stays content-sized with its list cap.
+        {
+          const { wrapper } = makeCell("custom-layout-card", false);
+          wrapper.appendChild(cart);
+          cart.requestUpdate();
+          await cart.updateComplete;
+          if (cart.hasAttribute("fixed")) found.push("rohlik-cart-card: in an unknown wrapper card marked fixed");
+          const lines = cart.shadowRoot.querySelector(".lines");
+          if (lines && lines.clientHeight > 400) found.push(`rohlik-cart-card: in an unknown wrapper the list lost its cap (${lines.clientHeight}px)`);
+        }
         return found;
       });
       for (const p of problems) failures.push(`stack: ${p}`);
