@@ -192,7 +192,15 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
     // The results hang from the box's bottom edge, so that edge decides.
     // Only a fixed-height card scrolls itself; query it fresh (a re-render
     // can replace the ha-card element).
-    const haCard = this.fixedHeight ? this.renderRoot.querySelector("ha-card") : null;
+    const current = this.renderRoot.querySelector<HTMLElement>("ha-card") ?? undefined;
+    if (current !== this.scrollingCard) {
+      // Re-rendered (e.g. entities went missing and came back): move the
+      // card-scroll listener to the new ha-card.
+      this.scrollingCard?.removeEventListener("scroll", this.onWindowReposition);
+      this.scrollingCard = current;
+      this.scrollingCard?.addEventListener("scroll", this.onWindowReposition, { passive: true });
+    }
+    const haCard = this.fixedHeight ? current : null;
     const card = haCard?.getBoundingClientRect();
     this.popoverOutOfView = !!card && (rect.bottom < card.top || rect.bottom > card.bottom);
     // Hidden results must not stay keyboard-active (Enter would add an

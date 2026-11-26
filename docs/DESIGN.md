@@ -47,15 +47,17 @@ Decisions already taken (do not re-open):
    scrolls inside it (vertically only), with
    every block kept at its content height (`flex-shrink: 0`). The cart's item list
    is no exception: its desktop height cap is lifted and the card is the one scroller. Without `fixed` (rows "auto", masonry, stacks,
-   panel views, stale `grid_options` outside sections) the card keeps its content
-   height, so a parent that sets a height can't squeeze it.
+   panel views, stale `grid_options` outside sections) the card is never shrunk below
+   its content (a parent that sets a height can't squeeze it) but fills a slot a parent
+   stretches (horizontal stack, square grid card, panel view), like HA's own cards. A
+   card nested in a stack or grid card inside a fixed sections cell is detected from
+   the DOM (`insideFixedSectionCell`) and treated as fixed.
    A card's own fixed default (compact delivery, 2 rows) counts as fixed too: like HA,
    the user's grid options are merged over the card's own. In a sections view every
    card (`in-grid` attribute) fills its cell, so cards sharing a row stretch to the
    tallest, like HA's built-in cards; on touch a fixed card still scrolls itself (the
-   alternative is painting over its neighbours), which the README upgrade note covers. Known
-   limitation: inside a conditional card HA doesn't pass `layout` on, so rows set on the
-   conditional can't be detected and the card stays content-sized.
+   alternative is painting over its neighbours), which the README upgrade note covers. Wrappers that
+   don't pass `layout` on (conditional, stacks, grid card) are covered by that DOM check.
    Only the compact delivery card keeps fixed rows (one line, 2 rows). `getCardSize()`
    returns a fixed per-card estimate in 50 px units (not a DOM measurement, which would
    move cards between masonry columns as it changes); HA

@@ -30,3 +30,23 @@ export function isFixedHeight(
   }
   return typeof merged.rows === "number";
 }
+
+/**
+ * Whether `el` sits inside a fixed-height sections cell through a wrapper
+ * that doesn't pass `layout` on (horizontal/vertical stack, grid card,
+ * conditional card). HA marks such a cell `.card.fit-rows`
+ * (hui-grid-section.ts). Walks the composed tree a bounded number of steps
+ * and stops at the section itself.
+ */
+export function insideFixedSectionCell(el: Element, maxSteps = 24): boolean {
+  let node: Node | null = el.parentNode;
+  for (let step = 0; node && step < maxSteps; step++) {
+    if (node instanceof Element) {
+      if (node.classList.contains("card") && node.classList.contains("fit-rows")) return true;
+      const tag = node.tagName.toLowerCase();
+      if (tag === "hui-grid-section" || tag === "hui-section" || tag === "body") return false;
+    }
+    node = node instanceof ShadowRoot ? node.host : node.parentNode;
+  }
+  return false;
+}

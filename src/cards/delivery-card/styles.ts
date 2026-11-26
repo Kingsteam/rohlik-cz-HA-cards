@@ -309,10 +309,10 @@ export const deliveryCardStyles = css`
     }
   }
 
-  /* The compact card fills its cell (2 rows, or a row stretched by a taller
-     neighbour); keep its single line centred. */
-  :host([fixed]) .compact-row,
-  :host([in-grid]) .compact-row {
+  /* The compact card can fill a taller slot (2-row cell, a row stretched by
+     a taller neighbour, a square grid card); keep its single line centred.
+     A no-op when the card is content-sized. */
+  .compact-row {
     margin-block: auto;
   }
 
@@ -357,8 +357,8 @@ export const deliveryCardStyles = css`
     white-space: nowrap;
   }
 
-  /* Too narrow for any chip text: drop the chip rather than show an empty pill. */
-  @container (max-width: 200px) {
+  /* Too narrow for the chip and the full time: drop the chip, keep the time. */
+  @container (max-width: 260px) {
     .compact-row .chip {
       display: none;
     }

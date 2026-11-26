@@ -335,7 +335,7 @@ async function main() {
       await page.goto(`http://127.0.0.1:${PORT}/docs/dev/preview/index.html?state=arriving&cart=many`);
       await page.waitForFunction(() => window.__PREVIEW_READY__ === true, { timeout: 15000 });
       await page.waitForFunction(() => !!document.querySelector("rohlik-cart-card")?.shadowRoot?.querySelector(".lines > *"));
-      const problems = await page.evaluate(() => {
+      const problems = await page.evaluate(async () => {
         const found = [];
         const row = document.createElement("div");
         row.style.cssText = "display:flex;width:700px;gap:8px";
@@ -352,17 +352,42 @@ async function main() {
             found.push(`${card.tagName.toLowerCase()}: ${ha.offsetHeight}px in a ${card.parentElement.offsetHeight}px stack slot`);
           }
         }
+        // A parent with a set height outside any sections cell: no squeeze.
         const squeeze = document.createElement("div");
-        squeeze.style.cssText = "display:flex;height:248px;width:600px";
+        squeeze.style.cssText = "display:flex;height:200px;width:600px";
         document.body.prepend(squeeze);
-        const wrapper = document.createElement("hui-card");
-        wrapper.style.cssText = "flex:1;min-width:0";
+        const slotsWrapper = document.createElement("hui-card");
+        slotsWrapper.style.cssText = "flex:1;min-width:0";
+        const slots = document.getElementById("rohlik-slots-card").firstElementChild;
+        slotsWrapper.appendChild(slots);
+        squeeze.appendChild(slotsWrapper);
+        const slotsHa = slots.shadowRoot.querySelector("ha-card");
+        if (slotsHa.scrollHeight > slotsHa.clientHeight + 1) {
+          found.push(`rohlik-slots-card: squeezed by a 200px parent (${slotsHa.scrollHeight}px in ${slotsHa.clientHeight}px)`);
+        }
+        // A horizontal stack inside a fixed 4-row sections cell (HA doesn't
+        // pass layout to nested cards): the cart must stay inside the cell
+        // and scroll, not paint over the cells below.
+        const cell = document.createElement("div");
+        cell.className = "card fit-rows";
+        cell.style.cssText = "display:block;height:248px;width:600px";
+        const stack = document.createElement("div");
+        stack.style.cssText = "display:flex;height:100%";
+        const cartWrapper = document.createElement("hui-card");
+        cartWrapper.style.cssText = "flex:1 1 0;min-width:0";
         const cart = document.getElementById("rohlik-cart-card").firstElementChild;
-        wrapper.appendChild(cart);
-        squeeze.appendChild(wrapper);
-        const ha = cart.shadowRoot.querySelector("ha-card");
-        if (ha.scrollHeight > ha.clientHeight + 1) {
-          found.push(`rohlik-cart-card: squeezed by a 248px parent (${ha.scrollHeight}px in ${ha.clientHeight}px)`);
+        cartWrapper.appendChild(cart);
+        stack.appendChild(cartWrapper);
+        cell.appendChild(stack);
+        document.body.prepend(cell);
+        cart.requestUpdate();
+        await cart.updateComplete;
+        const cartHa = cart.shadowRoot.querySelector("ha-card");
+        const c = cell.getBoundingClientRect();
+        const h = cartHa.getBoundingClientRect();
+        if (!cart.hasAttribute("fixed")) found.push("rohlik-cart-card: in a stack in a fixed cell but not marked fixed");
+        if (h.bottom > c.bottom + 1) {
+          found.push(`rohlik-cart-card: in a stack in a fixed cell, spills ${Math.round(h.bottom - c.bottom)}px below it`);
         }
         return found;
       });

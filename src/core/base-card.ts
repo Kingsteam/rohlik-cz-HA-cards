@@ -19,7 +19,7 @@ import { formatAgo, formatMoney, parseTs } from "./format";
 import { currencyFromUnit, shopForDevice, type ShopInfo } from "./shop";
 import { localize, coreStrings, withLanguage, type CardLanguage, type Dict } from "./localize";
 import { sharedStyles } from "./styles";
-import { isFixedHeight } from "./layout";
+import { insideFixedSectionCell, isFixedHeight } from "./layout";
 
 export interface RohlikCardConfig extends LovelaceCardConfig {
   device: string;
@@ -145,12 +145,19 @@ export abstract class RohlikBaseCard<C extends RohlikCardConfig = RohlikCardConf
   protected get fixedHeight(): boolean {
     // HA merges the user's grid options over the card's own, so a card whose
     // own default is a fixed row count (compact delivery) is fixed too.
-    return isFixedHeight(
-      this.layout,
-      this.config ? this.getGridOptions() : undefined,
-      this.config?.grid_options,
-      this.config?.layout_options,
-    );
+    if (
+      isFixedHeight(
+        this.layout,
+        this.config ? this.getGridOptions() : undefined,
+        this.config?.grid_options,
+        this.config?.layout_options,
+      )
+    ) {
+      return true;
+    }
+    // Nested in a stack/grid card that sits in a fixed sections cell: HA
+    // doesn't pass `layout` to nested cards, so look at the DOM.
+    return this.layout !== "grid" && this.isConnected && insideFixedSectionCell(this);
   }
 
   protected updated(changed: PropertyValues<this>): void {
