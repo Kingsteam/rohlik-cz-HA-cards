@@ -81,6 +81,8 @@ function scenarios() {
       list.push({ pointer, width, state: "arriving", lang: "cs", cart: "default", rows: 4 });
     }
     list.push({ pointer, width: 400, state: "none", lang: "en", cart: "many", rows: 8 });
+    // Compact delivery card: its own default is a fixed 2 rows.
+    list.push({ pointer, width: 400, state: "arriving", lang: "cs", cart: "default", compact: true });
     // The same fixed height set the pre-2024.11 way (layout_options.grid_rows).
     list.push({ pointer, width: 400, state: "arriving", lang: "cs", cart: "many", rows: 4, legacy: true });
   }
@@ -88,7 +90,7 @@ function scenarios() {
 }
 
 /** Runs in the page: measures every card cell and returns problems found. */
-function inspect({ fixed, touch }) {
+function inspect({ touch }) {
   const problems = [];
   const cells = [...document.querySelectorAll("#ha-section .card")];
   if (cells.length === 0) return ["no cards rendered in the sections replica"];
@@ -110,7 +112,9 @@ function inspect({ fixed, touch }) {
     if (box.bottom > c.bottom + 1) {
       problems.push(`${tag}: spills ${round(box.bottom - c.bottom)}px below its cell (overlaps the next card)`);
     }
-    if (fixed) {
+    // A cell is fixed when it has a numeric row count (`fit-rows`), whether
+    // the user forced it or it is the card's own default.
+    if (cell.classList.contains("fit-rows")) {
       if (Math.abs(host.height - c.height) > 1) {
         problems.push(`${tag}: does not fill its fixed cell (${round(host.height)}px in ${round(c.height)}px)`);
       }
@@ -226,6 +230,7 @@ async function main() {
         cart: s.cart,
         ...(s.rows ? { rows: String(s.rows) } : {}),
         ...(s.legacy ? { legacy: "1" } : {}),
+        ...(s.compact ? { compact: "1" } : {}),
       });
       await page.goto(`http://127.0.0.1:${PORT}/docs/dev/preview/index.html?${query}`);
       await page.waitForFunction(
@@ -241,9 +246,39 @@ async function main() {
       }
       await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
       const initError = await page.evaluate(() => window.__PREVIEW_ERROR__ || null);
-      const problems = initError ? [`preview failed: ${initError}`] : await page.evaluate(inspect, { fixed: Boolean(s.rows), touch: s.pointer === "touch" });
-      const label = `${s.pointer} ${s.width}px ${s.state} ${s.lang} cart=${s.cart}${s.rows ? ` rows=${s.rows}` : ""}${s.legacy ? " (layout_options)" : ""}`;
+      const problems = initError ? [`preview failed: ${initError}`] : await page.evaluate(inspect, { touch: s.pointer === "touch" });
+      const label = `${s.pointer} ${s.width}px ${s.state} ${s.lang} cart=${s.cart}${s.rows ? ` rows=${s.rows}` : ""}${s.legacy ? " (layout_options)" : ""}${s.compact ? " compact" : ""}`;
       for (const p of [...problems, ...errors]) failures.push(`${label}: ${p}`);
+      checked++;
+      await context.close();
+    }
+    // The cart's search popover (position: fixed) must follow the search box
+    // when a fixed-height card scrolls itself (touch: only the card scrolls).
+    {
+      const context = await browser.newContext({ viewport: { width: 600, height: 1400 }, hasTouch: true, isMobile: true });
+      const page = await context.newPage();
+      await page.goto(`http://127.0.0.1:${PORT}/docs/dev/preview/index.html?grid=sections&width=400&rows=6&cart=many`);
+      await page.waitForFunction(() => window.__PREVIEW_READY__ === true, { timeout: 15000 });
+      await page.waitForFunction(() => !!document.querySelector("rohlik-cart-card")?.shadowRoot?.querySelector(".lines > *"));
+      await page.locator("rohlik-cart-card").locator("input").first().fill("mléko");
+      await page.waitForFunction(
+        () => !!document.querySelector("rohlik-cart-card")?.shadowRoot?.querySelector(".search-popover .row"),
+        { timeout: 5000 },
+      );
+      const gap = () =>
+        page.evaluate(() => {
+          const r = document.querySelector("rohlik-cart-card").shadowRoot;
+          return r.querySelector(".search-popover").getBoundingClientRect().top - r.querySelector(".search-box").getBoundingClientRect().bottom;
+        });
+      const before = await gap();
+      await page.evaluate(() => {
+        document.querySelector("rohlik-cart-card").shadowRoot.querySelector("ha-card").scrollTop = 80;
+      });
+      await page.waitForTimeout(100);
+      const after = await gap();
+      if (Math.abs(after - before) > 1) {
+        failures.push(`touch rows=6 cart=many: search popover detaches when the card scrolls (${Math.round(after - before)}px)`);
+      }
       checked++;
       await context.close();
     }

@@ -144,6 +144,7 @@
       const forcedRows = params.has("rows") ? Number(params.get("rows")) : undefined;
       // ?legacy=1: set the forced rows the pre-2024.11 way (layout_options).
       const legacyLayout = params.get("legacy") === "1";
+      const compactDelivery = params.get("compact") === "1";
 
       document.documentElement.lang = lang;
       if (theme === "dark") document.body.setAttribute("data-theme", "dark");
@@ -191,6 +192,9 @@
           const config = { type: `custom:${tag}`, device: DEVICE_ID };
           if (tag === "rohlik-cart-card") {
             config.min_order = 749;
+          }
+          if (tag === "rohlik-delivery-card" && compactDelivery) {
+            config.compact = true;
           }
           if (tag === "rohlik-spending-card" && period) {
             config.default_period = period;

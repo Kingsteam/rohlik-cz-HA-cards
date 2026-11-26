@@ -50,9 +50,12 @@ Decisions already taken (do not re-open):
    and the 8-item cap keeps it short. Without `fixed` (rows "auto", masonry, stacks,
    panel views, stale `grid_options` outside sections) the card keeps its content
    height, so a parent that sets a height can't squeeze it.
+   A card's own fixed default (compact delivery, 2 rows) counts as fixed too. Known
+   limitation: inside a conditional card HA doesn't pass `layout` on, so rows set on the
+   conditional can't be detected and the card stays content-sized.
    Only the compact delivery card keeps fixed rows (one line, 2 rows). `getCardSize()`
    returns the rendered height in 50 px units (an estimate before first render); HA
-   uses it for masonry columns and as the starting size when "auto height" is turned
+   uses it for masonry columns and as the starting size when "Fit height to content" is turned
    off. `npm run check:layout` replicates the sections grid and asserts all of this.
 6. **Freshness footer** (optional per card): "updated N min ago" from the `updated` sensor,
    amber when older than 20 minutes.

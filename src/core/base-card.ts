@@ -142,7 +142,12 @@ export abstract class RohlikBaseCard<C extends RohlikCardConfig = RohlikCardConf
    * spilling over its neighbours.
    */
   protected get fixedHeight(): boolean {
-    return isFixedHeight(this.layout, this.config?.grid_options, this.config?.layout_options);
+    // HA merges the user's grid options over the card's own; a card whose
+    // own default is a fixed row count (compact delivery) is fixed too.
+    const own = this.config ? this.getGridOptions() : undefined;
+    const user = this.config?.grid_options as Record<string, unknown> | undefined;
+    const merged = user || this.config?.layout_options ? user : own;
+    return isFixedHeight(this.layout, merged, this.config?.layout_options);
   }
 
   protected updated(changed: PropertyValues<this>): void {

@@ -29,6 +29,12 @@ export const cartStyles = css`
     min-height: 120px;
   }
 
+  /* A collapsed list ("Show all (N)" below it) must not stretch into the spare
+     height of a tall cell, or the button drifts away from the last line. */
+  :host([fixed]) ha-card > .lines:has(+ .show-toggle) {
+    flex-grow: 0;
+  }
+
   /* On touch, an inner scroll region swallows the swipe meant for the
      dashboard (PR #11): with a fixed height the list doesn't scroll on its
      own there, the 8-item cap keeps it short and only the card scrolls. */

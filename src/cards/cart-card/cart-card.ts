@@ -108,6 +108,8 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
   private searchSeq = 0;
   private loadSeq = 0;
   private popoverListenersAttached = false;
+  /** The ha-card whose own scrolling repositions the popover (fixed card height). */
+  private scrollingCard?: HTMLElement;
   private repositionRaf?: number;
 
   public static getConfigElement(): HTMLElement {
@@ -157,6 +159,10 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
     window.addEventListener("scroll", this.onWindowReposition, true);
     window.addEventListener("resize", this.onWindowReposition);
     document.addEventListener("pointerdown", this.onDocumentPointerDown);
+    // With a fixed card height the card itself scrolls. Scroll events don't
+    // leave the shadow root, so the window listener above never sees them.
+    this.scrollingCard = this.renderRoot.querySelector("ha-card") ?? undefined;
+    this.scrollingCard?.addEventListener("scroll", this.onWindowReposition, { passive: true });
   }
 
   private detachPopoverListeners(): void {
@@ -165,6 +171,8 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
     window.removeEventListener("scroll", this.onWindowReposition, true);
     window.removeEventListener("resize", this.onWindowReposition);
     document.removeEventListener("pointerdown", this.onDocumentPointerDown);
+    this.scrollingCard?.removeEventListener("scroll", this.onWindowReposition);
+    this.scrollingCard = undefined;
     if (this.repositionRaf !== undefined) {
       cancelAnimationFrame(this.repositionRaf);
       this.repositionRaf = undefined;
