@@ -41,6 +41,10 @@ jobs:
       # phone swallows the swipe meant for the dashboard view.
       - name: Scroll check (phone width)
         run: |
+          # Refresh the apt index first: --with-deps runs apt-get install,
+          # which 404s once Ubuntu replaces a package the runner image's
+          # stale index still points at.
+          sudo apt-get update
           npx --yes playwright install --with-deps chromium
           npm run check:scroll
 
