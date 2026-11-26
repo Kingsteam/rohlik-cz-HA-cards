@@ -319,9 +319,10 @@ export const deliveryCardStyles = css`
   /* On a narrow compact card the chip gives way (ellipsis) instead of
      pushing the row wider than the card. */
   .compact-row .chip {
-    /* Block (not inline-flex), so text-overflow: ellipsis applies. */
+    /* Block (not inline-flex), so text-overflow: ellipsis applies. Shrinks
+       far faster than the headline, so it gives way first. */
     display: block;
-    flex: 0 1 auto;
+    flex: 0 1000 auto;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -354,6 +355,13 @@ export const deliveryCardStyles = css`
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  /* Too narrow for any chip text: drop the chip rather than show an empty pill. */
+  @container (max-width: 200px) {
+    .compact-row .chip {
+      display: none;
+    }
   }
 
   /* :host sets container-type: inline-size (core/styles.ts) — this queries

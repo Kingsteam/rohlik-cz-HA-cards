@@ -326,6 +326,50 @@ async function main() {
       checked++;
       await context.close();
     }
+    // Outside sections: HA's horizontal stack stretches each hui-card wrapper
+    // to the tallest card. Every card must fill that slot (no band below), and
+    // a parent with a set height must never squeeze a card below its content.
+    {
+      const context = await browser.newContext({ viewport: { width: 900, height: 1600 } });
+      const page = await context.newPage();
+      await page.goto(`http://127.0.0.1:${PORT}/docs/dev/preview/index.html?state=arriving&cart=many`);
+      await page.waitForFunction(() => window.__PREVIEW_READY__ === true, { timeout: 15000 });
+      await page.waitForFunction(() => !!document.querySelector("rohlik-cart-card")?.shadowRoot?.querySelector(".lines > *"));
+      const problems = await page.evaluate(() => {
+        const found = [];
+        const row = document.createElement("div");
+        row.style.cssText = "display:flex;width:700px;gap:8px";
+        document.body.prepend(row);
+        for (const tag of ["rohlik-delivery-card", "rohlik-account-card"]) {
+          const wrapper = document.createElement("hui-card");
+          wrapper.style.cssText = "flex:1 1 0;min-width:0";
+          wrapper.appendChild(document.getElementById(tag).firstElementChild);
+          row.appendChild(wrapper);
+        }
+        for (const card of row.querySelectorAll("rohlik-delivery-card, rohlik-account-card")) {
+          const ha = card.shadowRoot.querySelector("ha-card");
+          if (Math.abs(card.parentElement.offsetHeight - ha.offsetHeight) > 1) {
+            found.push(`${card.tagName.toLowerCase()}: ${ha.offsetHeight}px in a ${card.parentElement.offsetHeight}px stack slot`);
+          }
+        }
+        const squeeze = document.createElement("div");
+        squeeze.style.cssText = "display:flex;height:248px;width:600px";
+        document.body.prepend(squeeze);
+        const wrapper = document.createElement("hui-card");
+        wrapper.style.cssText = "flex:1;min-width:0";
+        const cart = document.getElementById("rohlik-cart-card").firstElementChild;
+        wrapper.appendChild(cart);
+        squeeze.appendChild(wrapper);
+        const ha = cart.shadowRoot.querySelector("ha-card");
+        if (ha.scrollHeight > ha.clientHeight + 1) {
+          found.push(`rohlik-cart-card: squeezed by a 248px parent (${ha.scrollHeight}px in ${ha.clientHeight}px)`);
+        }
+        return found;
+      });
+      for (const p of problems) failures.push(`stack: ${p}`);
+      checked++;
+      await context.close();
+    }
   } finally {
     await browser.close();
     server.close();

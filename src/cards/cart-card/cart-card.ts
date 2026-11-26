@@ -190,7 +190,10 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
     // the card's visible area, hide the results instead of drawing them over
     // the neighbouring cards; they come back when it scrolls back into view.
     // The results hang from the box's bottom edge, so that edge decides.
-    const card = this.scrollingCard?.getBoundingClientRect();
+    // Only a fixed-height card scrolls itself; query it fresh (a re-render
+    // can replace the ha-card element).
+    const haCard = this.fixedHeight ? this.renderRoot.querySelector("ha-card") : null;
+    const card = haCard?.getBoundingClientRect();
     this.popoverOutOfView = !!card && (rect.bottom < card.top || rect.bottom > card.bottom);
     // Hidden results must not stay keyboard-active (Enter would add an
     // item the user can't see).
@@ -443,6 +446,9 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
     }
     if (ev.key === "Enter") {
       ev.preventDefault();
+      // Results hidden by a scrolled-away search box: do nothing rather than
+      // add an item the user can't see.
+      if (this.popoverOpen && this.popoverOutOfView) return;
       const highlighted =
         this.highlightedIndex >= 0 ? this.searchResults[this.highlightedIndex] : undefined;
       if (highlighted) {

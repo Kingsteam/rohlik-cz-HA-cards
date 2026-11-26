@@ -9,7 +9,13 @@ import { css } from "lit";
 export const sharedStyles = css`
   :host {
     --rohlik-accent: var(--primary-color);
-    display: block;
+    /* A flex column whose ha-card grows: fill a slot a parent stretches
+       (HA's horizontal stack and grid card stretch the hui-card wrapper) but
+       never shrink below the content. In an auto-height parent (masonry,
+       rows "auto") min-height resolves to 0 and the card is content-sized. */
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
     /* Lets cards adapt to their own width with @container queries. */
     container-type: inline-size;
   }
@@ -17,6 +23,8 @@ export const sharedStyles = css`
   ha-card {
     display: flex;
     flex-direction: column;
+    /* Grows to fill the host (see :host), never shrinks below its content. */
+    flex: 1 0 auto;
     padding: var(--ha-space-4, 16px);
     box-sizing: border-box;
     /* NOT a scroll container by default. On touch, a scrollable card eats
