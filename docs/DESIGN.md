@@ -44,10 +44,8 @@ Decisions already taken (do not re-open):
    `layout_options.grid_rows`, in a sections view — `layout === "grid"`) sets the
    `fixed` host attribute (see `src/core/layout.ts`); only then are `:host` and
    `ha-card` `height: 100%`, so the card fills its cell and scrolls inside it, with
-   every block kept at its content height (`flex-shrink: 0`). On mouse the cart's item
-   list is the one block that shrinks and scrolls (at least ~2 lines; cart `min_rows`
-   is 6); on touch nothing inside the card scrolls on its own (PR #11), only the card,
-   and the 8-item cap keeps it short. Without `fixed` (rows "auto", masonry, stacks,
+   every block kept at its content height (`flex-shrink: 0`). The cart's item list
+   is no exception: its desktop height cap is lifted and the card is the one scroller. Without `fixed` (rows "auto", masonry, stacks,
    panel views, stale `grid_options` outside sections) the card keeps its content
    height, so a parent that sets a height can't squeeze it.
    A card's own fixed default (compact delivery, 2 rows) counts as fixed too: like HA,
@@ -58,7 +56,8 @@ Decisions already taken (do not re-open):
    limitation: inside a conditional card HA doesn't pass `layout` on, so rows set on the
    conditional can't be detected and the card stays content-sized.
    Only the compact delivery card keeps fixed rows (one line, 2 rows). `getCardSize()`
-   returns the rendered height in 50 px units (an estimate before first render); HA
+   returns a fixed per-card estimate in 50 px units (not a DOM measurement, which would
+   move cards between masonry columns as it changes); HA
    uses it for masonry columns and as the starting size when "Fit height to content" is turned
    off. `npm run check:layout` replicates the sections grid and asserts all of this.
 6. **Freshness footer** (optional per card): "updated N min ago" from the `updated` sensor,

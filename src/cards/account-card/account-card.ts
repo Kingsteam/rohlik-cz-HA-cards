@@ -73,7 +73,7 @@ export class RohlikAccountCard extends RohlikBaseCard<AccountCardConfig> {
   }
 
   protected estimatedCardSize(): number {
-    return 8;
+    return 10;
   }
 
   private statsToShow(): AccountStat[] {

@@ -100,7 +100,7 @@ export class RohlikDeliveryCard extends RohlikBaseCard<DeliveryCardConfig> {
   }
 
   protected estimatedCardSize(): number {
-    return this.config?.compact ? 2 : 8;
+    return this.config?.compact ? 2 : 10;
   }
 
   public getGridOptions(): LovelaceGridOptions {

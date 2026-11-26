@@ -20,33 +20,14 @@ export const cartStyles = css`
     overflow-y: auto;
   }
 
-  /* User-chosen fixed height: the list takes the space left by the header,
-     search and footer and scrolls. It never shrinks below about two lines
-     (180 px);
-     in a cell too small for that, the card itself scrolls (shared
-     :host([fixed]) ha-card rule) so every line and the footer stay reachable. */
+  /* User-chosen fixed height: like the other cards, the list keeps its
+     natural height (shared :host([fixed]) ha-card > * rule, and
+     listMaxHeight() lifts the desktop cap) and the card is the one scroller,
+     as HA's own to-do card does — no nested scroll region on any device.
+     It doesn't grow into spare height either, so "Show all" stays under the
+     last line in a tall cell. */
   :host([fixed]) ha-card > .lines {
-    flex-shrink: 1;
-    /* About two lines even on a narrow card (~89 px per stacked line). */
-    min-height: 180px;
-  }
-
-  /* A collapsed list ("Show all (N)" below it) must not stretch into the spare
-     height of a tall cell, or the button drifts away from the last line. */
-  :host([fixed]) ha-card > .lines:has(+ .show-toggle) {
     flex-grow: 0;
-    min-height: 0;
-  }
-
-  /* On touch, an inner scroll region swallows the swipe meant for the
-     dashboard (PR #11): with a fixed height the list doesn't scroll on its
-     own there, the 8-item cap keeps it short and only the card scrolls. */
-  @media (pointer: coarse) {
-    :host([fixed]) ha-card > .lines {
-      flex-shrink: 0;
-      min-height: auto;
-      overflow-y: visible;
-    }
   }
 
   .caption {

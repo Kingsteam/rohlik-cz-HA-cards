@@ -112,15 +112,16 @@ export abstract class RohlikBaseCard<C extends RohlikCardConfig = RohlikCardConf
 
   /**
    * Height in 50 px units, for masonry column balancing and the editor's
-   * starting size when the user switches "auto height" off. The rendered
-   * height when known, else the card's estimate.
+   * starting size when the user switches "Fit height to content" off.
+   * Deliberately an estimate, not a DOM measurement: HA asks both before and
+   * after the card is attached, and a measured value would move cards
+   * between masonry columns as it changes.
    */
   getCardSize(): number {
-    const height = this.isConnected ? this.offsetHeight : 0;
-    return height > 0 ? Math.max(1, Math.ceil(height / 50)) : this.estimatedCardSize();
+    return this.estimatedCardSize();
   }
 
-  /** Typical rendered height in 50 px units, used before the card has rendered. */
+  /** Typical rendered height in 50 px units (see getCardSize). */
   protected estimatedCardSize(): number {
     return 4;
   }

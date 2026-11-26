@@ -126,10 +126,8 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
 
   getGridOptions(): LovelaceGridOptions {
     // Content-sized: the list is capped by height (mouse) or item count
-    // (touch) instead. A user-chosen fixed height scrolls the list inside.
-    // min_rows 6: header, search and footer take ~250 px; a smaller fixed
-    // height would leave no room for the list.
-    return { columns: 12, rows: "auto", min_columns: 6, min_rows: 6 };
+    // (touch) instead. A user-chosen fixed height scrolls the whole card.
+    return { columns: 12, rows: "auto", min_columns: 6, min_rows: 4 };
   }
 
   public disconnectedCallback(): void {
@@ -262,7 +260,8 @@ export class RohlikCartCard extends RohlikBaseCard<CartCardConfig> {
    * Always 0 on touch devices: an inner scroll region there swallows the
    * swipe meant for the dashboard view, so the list is capped by item count
    * instead (see `effectiveMaxItems`). Also 0 when the user picked a fixed
-   * card height: the list then fills the remaining space and scrolls.
+   * card height: the card itself then scrolls, so the list needs no cap of
+   * its own (one scroller, not two).
    */
   private listMaxHeight(): number {
     if (this.fixedHeight) return 0;

@@ -134,14 +134,15 @@ function inspect({ touch }) {
           problems.push(`${tag}: .${[...child.classList].join(".") || child.tagName.toLowerCase()} squeezed to ${child.offsetHeight}px (content ${child.scrollHeight}px)`);
         }
       }
-      // On touch the card itself may scroll, but nothing inside it: a nested
-      // scroller swallows the swipe meant for the dashboard (PR #11).
-      if (touch) {
+      // The card itself may scroll, but nothing inside it: on touch a nested
+      // scroller swallows the swipe meant for the dashboard (PR #11), and on
+      // any device two nested scrollers are clumsy.
+      {
         for (const el of haCard.querySelectorAll("*")) {
           const cs = getComputedStyle(el);
           if (cs.position === "fixed") continue;
           if (/auto|scroll/.test(cs.overflowY) && el.scrollHeight > el.clientHeight + 1) {
-            problems.push(`${tag}: nested vertical scroller on touch (.${[...el.classList].join(".")})`);
+            problems.push(`${tag}: nested vertical scroller (.${[...el.classList].join(".")})${touch ? " on touch" : ""}`);
           }
         }
       }
